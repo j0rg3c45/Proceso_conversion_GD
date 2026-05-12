@@ -1,0 +1,7 @@
+# Dependencias para csv_xlx_to_shape.py y shp_to_geojson.py
+# Instalar con: uv pip install -r requirements.txt
+
+geopandas>=1.0
+pandas>=2.0
+shapely>=2.0
+openpyxl>=3.1
