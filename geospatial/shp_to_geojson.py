@@ -4,7 +4,8 @@ Solicita al usuario las rutas de entrada y salida.
 
 
 
-uv run shp_to_geojson.py
+uv run Proceso_conversion_GD/geospatial/shp_to_geojson.py
+
 """
 
 import geopandas as gpd
