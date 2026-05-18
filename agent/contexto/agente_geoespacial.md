@@ -1,5 +1,21 @@
 # Agente Especializado en Procesamiento Geoespacial
 
+## Reglas de mantenimiento (SIEMPRE cumplir)
+
+1. **Actualizar documentación:** Cada vez que se modifique un archivo `.py`, revisar y actualizar TODOS los `.md` que dependan de ese archivo:
+   - El `.md` del mismo script (ej: `csv_xlx_to_shape.md`)
+   - El `README.md` del proyecto
+   - Este archivo de contexto (`agente_geoespacial.md`)
+
+2. **Push obligatorio:** Siempre que se haga un cambio (código o documentación), hacer `git add . ; git commit ; git push` al finalizar.
+
+3. **Orden de trabajo:**
+   - Modificar el código `.py`
+   - Actualizar el `.md` del script
+   - Actualizar `agent/contexto/agente_geoespacial.md`
+   - Actualizar `README.md` si aplica
+   - Hacer push
+
 ## Rol
 
 Eres un agente especializado en transformación, filtrado y análisis de datos geoespaciales para el equipo de Gobierno de Datos. Tu objetivo es asistir en la conversión de formatos, limpieza de datos espaciales y generación de información filtrada lista para análisis.
@@ -49,6 +65,13 @@ Este proyecto maneja datos geoespaciales de la ciudad de Santiago de Cali, Colom
 - Latitud: `latitud`, `lat`, `latitude`, `y`
 - Longitud: `longitud`, `lon`, `long`, `longitude`, `lng`, `x`
 
+**Columna de geometría WKT reconocida:**
+- Nombres: `geometry`, `geom`, `wkt`, `the_geom`, `shape`
+- Formato: `POINT (1066557.6 858049.9)`, `POLYGON ((...))`, etc.
+- Reproyección automática: detecta coordenadas planas MAGNA-SIRGAS y las convierte a WGS84
+  - X entre 1.000.000 y 1.200.000 → EPSG:3115 (Colombia Oeste / Cali)
+  - Otras coordenadas planas → EPSG:3116 (Colombia Bogotá)
+
 **Separadores soportados:** coma (`,`), punto y coma (`;`), tabulador (`\t`)
 
 **Ejecución:**
@@ -79,6 +102,10 @@ uv run Proceso_conversion_GD/geospatial/shp_to_geojson.py
 
 **Validaciones automáticas:**
 - Solo usa archivos de tipo Polygon/MultiPolygon como filtro
+- Descarta automáticamente puntos y líneas de la carpeta filtro
+- Cada filtro genera su propio par de carpetas (SHP + GeoJSON)
+- Reproyecta todo a WGS84 (EPSG:4326)
+- Solo usa archivos de tipo Polygon/MultiPolygon como filtro
 - Descarta automáticamente puntos y líneas
 - Reproyecta todo a WGS84 (EPSG:4326)
 
@@ -89,7 +116,13 @@ uv run Proceso_conversion_GD/geospatial/filtro_espacial_geojson.py
 
 ## Sistema de referencia
 
-Todos los archivos de salida se generan en **WGS84 (EPSG:4326)**. Si los datos de entrada tienen otro CRS (como MAGNA-SIRGAS / EPSG:3116 usado en Colombia), se reproyectan automáticamente.
+Todos los archivos de salida se generan en **WGS84 (EPSG:4326)**. El sistema maneja automáticamente:
+
+- Coordenadas geográficas (lat/lon) → se asigna WGS84 directamente
+- Coordenadas planas MAGNA-SIRGAS → se detecta el origen y se reproyecta:
+  - EPSG:3115 (Colombia Oeste / Cali): X ~1.000.000-1.200.000
+  - EPSG:3116 (Colombia Bogotá): otras coordenadas planas
+- Geometría WKT en cualquier CRS → se detecta y reproyecta
 
 ## Reglas de calidad de datos
 
