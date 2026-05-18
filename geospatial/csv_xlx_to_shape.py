@@ -119,6 +119,77 @@ def detectar_columnas_coordenadas(df: pd.DataFrame) -> tuple:
     return col_lat, col_lon
 
 
+def detectar_columna_geometry(df: pd.DataFrame) -> str:
+    """
+    Detecta si el DataFrame tiene una columna con geometría WKT
+    (ej: 'POINT (1066557.6 858049.9)').
+
+    Retorna:
+        Nombre de la columna o None si no encuentra
+    """
+    nombres_geometry = ["geometry", "geom", "wkt", "the_geom", "shape"]
+    columnas_lower = {col.lower().strip(): col for col in df.columns}
+
+    for nombre in nombres_geometry:
+        if nombre in columnas_lower:
+            col = columnas_lower[nombre]
+            # Verificar que al menos un valor parece WKT
+            muestra = df[col].dropna().head(5).astype(str)
+            if muestra.str.contains(r"POINT|POLYGON|LINESTRING|MULTIPOINT", case=False, regex=True).any():
+                return col
+
+    return None
+
+
+def crear_geodataframe_desde_wkt(df: pd.DataFrame, col_geom: str) -> gpd.GeoDataFrame:
+    """
+    Crea un GeoDataFrame a partir de una columna con geometría WKT.
+    Detecta si las coordenadas son planas (MAGNA-SIRGAS) o geográficas (WGS84)
+    y reproyecta a WGS84 si es necesario.
+    """
+    from shapely import wkt
+
+    # Filtrar filas con geometría nula o vacía
+    df_valido = df[df[col_geom].notna() & (df[col_geom].astype(str).str.strip() != "")].copy()
+
+    if df_valido.empty:
+        raise ValueError("No hay registros con geometría válida")
+
+    # Parsear WKT a geometría
+    try:
+        geometrias = df_valido[col_geom].apply(wkt.loads)
+    except Exception as e:
+        raise ValueError(f"Error al parsear geometría WKT: {e}")
+
+    # Eliminar la columna de texto WKT del DataFrame
+    df_valido = df_valido.drop(columns=[col_geom])
+
+    # Detectar CRS basado en el rango de coordenadas
+    # Coordenadas planas MAGNA-SIRGAS Colombia: X ~800.000-1.200.000, Y ~600.000-1.800.000
+    # Coordenadas geográficas WGS84: lon ~-80 a -66, lat ~-5 a 13
+    primera_geom = geometrias.iloc[0]
+    x_coord = primera_geom.centroid.x
+
+    if abs(x_coord) > 10000:
+        # Coordenadas planas - probablemente MAGNA-SIRGAS
+        # EPSG:3115 = Colombia Oeste (Cali)
+        # EPSG:3116 = Colombia Bogotá
+        # Para Cali usamos 3115
+        if x_coord > 1000000 and x_coord < 1200000:
+            crs_origen = "EPSG:3115"  # Colombia Oeste (Cali)
+        else:
+            crs_origen = "EPSG:3116"  # Colombia Bogotá (default)
+        print(f"    🌐 Coordenadas planas detectadas → CRS origen: {crs_origen}")
+        gdf = gpd.GeoDataFrame(df_valido, geometry=list(geometrias), crs=crs_origen)
+        gdf = gdf.to_crs(epsg=4326)
+        print(f"    🌐 Reproyectado a WGS84 (EPSG:4326)")
+    else:
+        # Coordenadas geográficas - ya es WGS84
+        gdf = gpd.GeoDataFrame(df_valido, geometry=list(geometrias), crs="EPSG:4326")
+
+    return gdf
+
+
 def detectar_separador(ruta: Path, codificacion: str) -> str:
     """
     Detecta el separador de un archivo de texto analizando el header.
@@ -380,21 +451,27 @@ def main():
                     else:
                         print(f"    📊 Registros leídos: {total_leidos} (sin duplicados)")
 
-                    # Detectar columnas de coordenadas
-                    col_lat, col_lon = detectar_columnas_coordenadas(df)
+                    # Detectar tipo de coordenadas: WKT o columnas lat/lon
+                    col_geom = detectar_columna_geometry(df)
 
-                    if col_lat is None or col_lon is None:
-                        msg = (f"No se detectaron columnas de coordenadas: {archivo.name} "
-                               f"(columnas disponibles: {list(df.columns)})")
-                        print(f"    ⚠️  {msg}")
-                        log_errores.append(msg)
-                        errores += 1
-                        continue
+                    if col_geom is not None:
+                        # Ruta WKT: columna con geometría como texto
+                        print(f"    Geometría WKT detectada en columna: '{col_geom}'")
+                        gdf = crear_geodataframe_desde_wkt(df, col_geom)
+                    else:
+                        # Ruta lat/lon: columnas separadas de coordenadas
+                        col_lat, col_lon = detectar_columnas_coordenadas(df)
 
-                    print(f"    Coordenadas detectadas: lat='{col_lat}', lon='{col_lon}'")
+                        if col_lat is None or col_lon is None:
+                            msg = (f"No se detectaron coordenadas (ni WKT ni lat/lon): {archivo.name} "
+                                   f"(columnas disponibles: {list(df.columns)})")
+                            print(f"    ⚠️  {msg}")
+                            log_errores.append(msg)
+                            errores += 1
+                            continue
 
-                    # Crear GeoDataFrame
-                    gdf = crear_geodataframe(df, col_lat, col_lon)
+                        print(f"    Coordenadas detectadas: lat='{col_lat}', lon='{col_lon}'")
+                        gdf = crear_geodataframe(df, col_lat, col_lon)
                     registros = len(gdf)
                     total_registros += registros
 

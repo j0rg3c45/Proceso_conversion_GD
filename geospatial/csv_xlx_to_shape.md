@@ -116,12 +116,37 @@ Los archivos con campos entrecomillados (`"valor con, coma"`) se manejan correct
 
 ## Detección automática de columnas
 
-El script busca coincidencias (sin importar mayúsculas/minúsculas) con estos nombres:
+El script busca coordenadas en dos formatos:
+
+### Formato 1: Columnas lat/lon separadas
+
+Busca coincidencias (sin importar mayúsculas/minúsculas) con estos nombres:
 
 | Coordenada | Nombres aceptados |
 |------------|-------------------|
 | Latitud | latitud, lat, latitude, y |
 | Longitud | longitud, lon, long, longitude, lng, x |
+
+### Formato 2: Columna de geometría WKT
+
+Si no encuentra columnas lat/lon, busca una columna con geometría en formato WKT:
+
+| Columna detectada | Ejemplo de contenido |
+|-------------------|---------------------|
+| geometry, geom, wkt, the_geom, shape | `POINT (1066557.6 858049.9)` |
+
+**Reproyección automática:** Si las coordenadas son planas (valores > 10.000), el script detecta que son MAGNA-SIRGAS y reproyecta automáticamente a WGS84:
+
+- Coordenadas X entre 1.000.000 y 1.200.000 → EPSG:3115 (Colombia Oeste / Cali)
+- Otras coordenadas planas → EPSG:3116 (Colombia Bogotá)
+
+```
+  📄 Procesando: estaciones_mecal.csv
+    Geometría WKT detectada en columna: 'geometry'
+    🌐 Coordenadas planas detectadas → CRS origen: EPSG:3115
+    🌐 Reproyectado a WGS84 (EPSG:4326)
+    ✓ Convertido exitosamente (45 registros)
+```
 
 ## Codificaciones soportadas
 
