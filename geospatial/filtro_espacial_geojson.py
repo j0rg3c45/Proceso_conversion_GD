@@ -210,9 +210,45 @@ def main():
         print(f"\n❌ No se encontraron archivos .shp en: {carpeta_datos.resolve()}")
         return
 
-    print(f"\n   ✅ Se encontraron {len(archivos_datos)} archivos .shp para filtrar:")
-    for archivo in archivos_datos:
-        print(f"   - {archivo.name}")
+    print(f"\n   Se encontraron {len(archivos_datos)} archivos .shp:\n")
+    for i, archivo in enumerate(archivos_datos, 1):
+        print(f"   {i}. {archivo.name}")
+
+    print(f"\n   Selecciona cuáles deseas filtrar:")
+    print(f"   • Escribe 'todos' o presiona Enter para usar todos")
+    print(f"   • Escribe los números separados por coma (ej: 1,3,5)")
+    print(f"   • Escribe un rango (ej: 1-4)")
+    seleccion_datos = input("   > ").strip().lower()
+
+    if not seleccion_datos or seleccion_datos in ("todos", "all", "t"):
+        # Usar todos
+        print(f"\n   ✅ Se usarán todos los {len(archivos_datos)} archivos")
+    else:
+        # Parsear selección
+        indices_seleccionados = set()
+        try:
+            for parte in seleccion_datos.split(","):
+                parte = parte.strip()
+                if "-" in parte:
+                    inicio, fin = parte.split("-")
+                    for idx in range(int(inicio), int(fin) + 1):
+                        indices_seleccionados.add(idx)
+                else:
+                    indices_seleccionados.add(int(parte))
+
+            # Validar rango
+            if any(i < 1 or i > len(archivos_datos) for i in indices_seleccionados):
+                print(f"\n❌ Selección fuera de rango (1-{len(archivos_datos)})")
+                return
+
+            archivos_datos = [archivos_datos[i - 1] for i in sorted(indices_seleccionados)]
+            print(f"\n   ✅ Archivos seleccionados ({len(archivos_datos)}):")
+            for archivo in archivos_datos:
+                print(f"   - {archivo.name}")
+
+        except ValueError:
+            print("\n❌ Formato de selección no válido. Usa: todos, 1,3,5 o 1-4")
+            return
 
     # -------------------------------------------------------------------------
     # 3. Solicitar carpeta de salida

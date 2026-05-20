@@ -64,7 +64,10 @@ Resultado: 3 pares de carpetas × M archivos de datos = 3×M archivos filtrados
                        ▼
 ┌─────────────────────────────────────────────┐
 │  2. Solicitar carpeta con los .shp          │
-│     a filtrar (datos de entrada)            │
+│     a filtrar y seleccionar:                │
+│     - todos (Enter)                         │
+│     - por número (1,3,5)                    │
+│     - por rango (1-4)                       │
 └──────────────────────┬──────────────────────┘
                        │
                        ▼
@@ -163,7 +166,21 @@ Con 2 filtros (`comuna_7.shp`, `comuna_13.shp`) y 3 archivos de datos:
    (ruta absoluta o relativa, ej: C:\Users\...\mi_carpeta)
    > C:\...\Data_Steward\Observatorio_2026\shape_Observatorio_2026
 
-   ✅ Se encontraron 3 archivos .shp para filtrar:
+   Se encontraron 5 archivos .shp:
+
+   1. comparendos_2023.shp
+   2. accidentes_2024.shp
+   3. puntos_control.shp
+   4. homicidios_2023.shp
+   5. hurtos_2024.shp
+
+   Selecciona cuáles deseas filtrar:
+   • Escribe 'todos' o presiona Enter para usar todos
+   • Escribe los números separados por coma (ej: 1,3,5)
+   • Escribe un rango (ej: 1-4)
+   > 1-3
+
+   ✅ Archivos seleccionados (3):
    - comparendos_2023.shp
    - accidentes_2024.shp
    - puntos_control.shp
