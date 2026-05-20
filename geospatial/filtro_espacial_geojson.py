@@ -148,7 +148,8 @@ def main():
     # 1. Solicitar carpeta con polígonos filtro
     # -------------------------------------------------------------------------
     print("\n📐 Ingresa la ruta de la carpeta con los polígonos filtro (.shp)")
-    print("   Cada .shp en esta carpeta se usará como filtro INDEPENDIENTE")
+    print("   (ruta absoluta o relativa, ej: C:\\Users\\...\\mi_carpeta)")
+    print("   Cada .shp de tipo Polígono se usará como filtro INDEPENDIENTE")
     entrada_filtro = input("   > ").strip().strip('"').strip("'")
 
     if not entrada_filtro:
@@ -157,8 +158,13 @@ def main():
 
     carpeta_filtro = Path(entrada_filtro)
 
-    if not carpeta_filtro.exists() or not carpeta_filtro.is_dir():
-        print(f"\n❌ La carpeta no existe: {carpeta_filtro.resolve()}")
+    if not carpeta_filtro.exists():
+        print(f"\n❌ La ruta no existe: {carpeta_filtro.resolve()}")
+        print(f"   Directorio actual: {Path.cwd()}")
+        return
+
+    if not carpeta_filtro.is_dir():
+        print(f"\n❌ La ruta no es una carpeta: {carpeta_filtro.resolve()}")
         return
 
     archivos_filtro, descartados = buscar_shapefiles_poligonos(carpeta_filtro)
@@ -180,6 +186,7 @@ def main():
     # 2. Solicitar carpeta con los .shp a filtrar
     # -------------------------------------------------------------------------
     print("\n📂 Ingresa la ruta de la carpeta con los archivos .shp a filtrar")
+    print("   (ruta absoluta o relativa, ej: C:\\Users\\...\\mi_carpeta)")
     entrada_datos = input("   > ").strip().strip('"').strip("'")
 
     if not entrada_datos:
@@ -188,8 +195,13 @@ def main():
 
     carpeta_datos = Path(entrada_datos)
 
-    if not carpeta_datos.exists() or not carpeta_datos.is_dir():
-        print(f"\n❌ La carpeta no existe: {carpeta_datos.resolve()}")
+    if not carpeta_datos.exists():
+        print(f"\n❌ La ruta no existe: {carpeta_datos.resolve()}")
+        print(f"   Directorio actual: {Path.cwd()}")
+        return
+
+    if not carpeta_datos.is_dir():
+        print(f"\n❌ La ruta no es una carpeta: {carpeta_datos.resolve()}")
         return
 
     archivos_datos = buscar_shapefiles(carpeta_datos)
@@ -206,16 +218,18 @@ def main():
     # 3. Solicitar carpeta de salida
     # -------------------------------------------------------------------------
     print("\n📂 Ingresa la ruta de la carpeta de salida")
-    print("   (se crearán subcarpetas por cada polígono filtro)")
+    print("   (ruta absoluta o relativa, se crearán subcarpetas por cada filtro)")
     print("   (presiona Enter para usar la misma carpeta de los datos)")
     entrada_salida = input("   > ").strip().strip('"').strip("'")
 
     if not entrada_salida:
         carpeta_salida = carpeta_datos
+        print(f"\n   Usando carpeta de datos como salida: {carpeta_salida.resolve()}")
     else:
         carpeta_salida = Path(entrada_salida)
 
     carpeta_salida.mkdir(parents=True, exist_ok=True)
+    print(f"\n📁 Carpeta de salida: {carpeta_salida.resolve()}")
 
     # -------------------------------------------------------------------------
     # 4. Resumen y confirmación

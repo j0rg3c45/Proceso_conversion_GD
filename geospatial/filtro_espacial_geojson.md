@@ -151,7 +151,8 @@ Con 2 filtros (`comuna_7.shp`, `comuna_13.shp`) y 3 archivos de datos:
 ======================================================================
 
 📐 Ingresa la ruta de la carpeta con los polígonos filtro (.shp)
-   Cada .shp en esta carpeta se usará como filtro INDEPENDIENTE
+   (ruta absoluta o relativa, ej: C:\Users\...\mi_carpeta)
+   Cada .shp de tipo Polígono se usará como filtro INDEPENDIENTE
    > C:\...\Data_Steward\poligonos_filtro
 
    ✅ Se encontraron 2 polígono(s) filtro:
@@ -159,6 +160,7 @@ Con 2 filtros (`comuna_7.shp`, `comuna_13.shp`) y 3 archivos de datos:
    - comuna_13.shp
 
 📂 Ingresa la ruta de la carpeta con los archivos .shp a filtrar
+   (ruta absoluta o relativa, ej: C:\Users\...\mi_carpeta)
    > C:\...\Data_Steward\Observatorio_2026\shape_Observatorio_2026
 
    ✅ Se encontraron 3 archivos .shp para filtrar:
@@ -167,6 +169,8 @@ Con 2 filtros (`comuna_7.shp`, `comuna_13.shp`) y 3 archivos de datos:
    - puntos_control.shp
 
 📂 Ingresa la ruta de la carpeta de salida
+   (ruta absoluta o relativa, se crearán subcarpetas por cada filtro)
+   (presiona Enter para usar la misma carpeta de los datos)
    > C:\...\Data_Steward\resultados_filtro
 
 ----------------------------------------------------------------------
