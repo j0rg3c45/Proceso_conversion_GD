@@ -541,13 +541,28 @@ def main():
 
                     # Truncar nombres de columna para Shapefile (máx 10 chars)
                     gdf_shp = gdf.copy()
-                    columnas_renombradas = {}
-                    for col in gdf_shp.columns:
-                        if col != "geometry" and len(col) > 10:
-                            columnas_renombradas[col] = col[:10]
-                    if columnas_renombradas:
-                        gdf_shp = gdf_shp.rename(columns=columnas_renombradas)
-                        print(f"    ⚠️  SHP: {len(columnas_renombradas)} columnas truncadas a 10 chars")
+                    columnas_originales = [col for col in gdf_shp.columns if col != "geometry"]
+                    columnas_truncadas = {}
+                    nombres_usados = set()
+
+                    for col in columnas_originales:
+                        if len(col) > 10:
+                            nombre_base = col[:10]
+                            nombre_nuevo = nombre_base
+                            contador = 1
+                            # Asegurar que no se repita
+                            while nombre_nuevo in nombres_usados:
+                                sufijo = str(contador)
+                                nombre_nuevo = col[:10 - len(sufijo)] + sufijo
+                                contador += 1
+                            columnas_truncadas[col] = nombre_nuevo
+                            nombres_usados.add(nombre_nuevo)
+                        else:
+                            nombres_usados.add(col)
+
+                    if columnas_truncadas:
+                        gdf_shp = gdf_shp.rename(columns=columnas_truncadas)
+                        print(f"    ⚠️  SHP: {len(columnas_truncadas)} columnas truncadas a 10 chars")
 
                     gdf_shp.to_file(ruta_shp, driver="ESRI Shapefile", encoding="utf-8")
 
