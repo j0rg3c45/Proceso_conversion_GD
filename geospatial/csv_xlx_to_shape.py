@@ -241,8 +241,25 @@ def leer_archivo(ruta: Path) -> pd.DataFrame:
     extension = ruta.suffix.lower()
 
     if extension in (".xlsx", ".xls"):
-        # Archivos Excel
-        df = pd.read_excel(ruta, engine="openpyxl" if extension == ".xlsx" else "xlrd")
+        # Archivos Excel - leer todas las hojas y concatenar
+        engine = "openpyxl" if extension == ".xlsx" else "xlrd"
+        xls = pd.ExcelFile(ruta, engine=engine)
+        hojas = xls.sheet_names
+
+        if len(hojas) == 1:
+            df = pd.read_excel(xls, sheet_name=hojas[0])
+        else:
+            # Múltiples hojas: concatenar todas
+            dfs = []
+            for hoja in hojas:
+                df_hoja = pd.read_excel(xls, sheet_name=hoja)
+                if not df_hoja.empty:
+                    dfs.append(df_hoja)
+            if not dfs:
+                return pd.DataFrame()
+            df = pd.concat(dfs, ignore_index=True)
+            print(f"    📑 Excel con {len(hojas)} hojas, concatenadas ({len(df)} registros total)")
+
         return df
 
     # Archivos de texto (.csv, .txt)
@@ -491,6 +508,11 @@ def main():
                     registros = len(gdf)
                     total_registros += registros
 
+                    # Resetear índice para evitar problemas en exportación
+                    gdf = gdf.reset_index(drop=True)
+
+                    print(f"    📋 Columnas en salida: {len(gdf.columns) - 1} atributos + geometry")
+
                     # Exportar a Shapefile (eliminar existentes primero)
                     nombre_salida = archivo.stem
                     ruta_shp = carpeta_shape / f"{nombre_salida}.shp"
@@ -499,9 +521,20 @@ def main():
                         archivo_previo = carpeta_shape / f"{nombre_salida}{ext}"
                         if archivo_previo.exists():
                             archivo_previo.unlink()
-                    gdf.to_file(ruta_shp, driver="ESRI Shapefile", encoding="utf-8")
 
-                    # Exportar a GeoJSON (eliminar existente primero)
+                    # Truncar nombres de columna para Shapefile (máx 10 chars)
+                    gdf_shp = gdf.copy()
+                    columnas_renombradas = {}
+                    for col in gdf_shp.columns:
+                        if col != "geometry" and len(col) > 10:
+                            columnas_renombradas[col] = col[:10]
+                    if columnas_renombradas:
+                        gdf_shp = gdf_shp.rename(columns=columnas_renombradas)
+                        print(f"    ⚠️  SHP: {len(columnas_renombradas)} columnas truncadas a 10 chars")
+
+                    gdf_shp.to_file(ruta_shp, driver="ESRI Shapefile", encoding="utf-8")
+
+                    # Exportar a GeoJSON (sin truncar, conserva nombres completos)
                     ruta_geojson = carpeta_geojson / f"{nombre_salida}.geojson"
                     if ruta_geojson.exists():
                         ruta_geojson.unlink()

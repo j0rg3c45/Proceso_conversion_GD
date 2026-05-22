@@ -272,11 +272,13 @@ Se registra en `log_errores.txt` y continúa con el siguiente archivo.
 
 ## Notas técnicas
 
-- El formato GeoJSON requiere coordenadas en WGS84 (EPSG:4326), que es el CRS asignado por defecto.
-- Los Shapefiles generados incluyen los archivos auxiliares (.shx, .dbf, .prj, .cpg).
+- El formato GeoJSON conserva todos los nombres de columna completos y todos los atributos.
+- El formato Shapefile tiene limitación de 10 caracteres en nombres de columna. El script trunca automáticamente y avisa cuáles se truncaron.
+- Los archivos Excel con múltiples hojas se concatenan automáticamente.
 - Los registros con coordenadas nulas o no numéricas se filtran automáticamente antes de la conversión.
 - Los archivos de salida conservan el nombre original, solo cambia la extensión.
 - Archivos CSV con campos entrecomillados (`"campo"`) se parsean correctamente.
+- Se hace `reset_index()` antes de exportar para evitar problemas con índices.
 
 ## Librerías del ambiente
 
