@@ -38,7 +38,8 @@ Dependencias:
     - openpyxl (para archivos .xlsx)
 =============================================================================
 
-uv run csv_xlx_to_shape.py
+uv run Proceso_conversion_GD/geospatial/csv_xlx_to_shape.py
+
 
 
 """
