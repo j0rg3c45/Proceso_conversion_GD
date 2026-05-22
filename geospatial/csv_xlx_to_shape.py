@@ -475,6 +475,23 @@ def main():
 
                     # Eliminar registros duplicados (todas las columnas iguales)
                     total_leidos = len(df)
+
+                    # Renombrar columnas duplicadas para evitar error en GeoDataFrame
+                    cols = list(df.columns)
+                    conteo_cols = {}
+                    cols_nuevos = []
+                    for col in cols:
+                        if col in conteo_cols:
+                            conteo_cols[col] += 1
+                            cols_nuevos.append(f"{col}_{conteo_cols[col]}")
+                        else:
+                            conteo_cols[col] = 0
+                            cols_nuevos.append(col)
+                    if cols != cols_nuevos:
+                        df.columns = cols_nuevos
+                        renombradas = sum(1 for a, b in zip(cols, cols_nuevos) if a != b)
+                        print(f"    ⚠️  {renombradas} columna(s) con nombre duplicado renombradas")
+
                     df = df.drop_duplicates()
                     unicos = len(df)
                     duplicados = total_leidos - unicos
