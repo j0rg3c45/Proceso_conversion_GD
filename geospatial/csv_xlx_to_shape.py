@@ -334,28 +334,41 @@ def main():
         print(f"\n✅ Carpeta encontrada: {ruta_principal.resolve()}")
 
         # ---------------------------------------------------------------------
-        # 2. Listar subcarpetas y pedir selección
+        # 2. Verificar archivos en carpeta principal o listar subcarpetas
         # ---------------------------------------------------------------------
+        archivos_en_raiz = buscar_archivos(ruta_principal)
         subcarpetas = listar_subcarpetas(ruta_principal)
 
-        if not subcarpetas:
-            print(f"\n❌ No se encontraron subcarpetas en: {ruta_principal.resolve()}")
+        if not subcarpetas and not archivos_en_raiz:
+            print(f"\n❌ No se encontraron subcarpetas ni archivos válidos en: {ruta_principal.resolve()}")
             continue
 
-        # Bucle para seleccionar subcarpetas dentro de la misma carpeta principal
+        # Bucle para seleccionar carpeta de trabajo
         while True:
-            print(f"\n📁 Subcarpetas encontradas en '{ruta_principal.name}':\n")
-            # Refrescar lista de subcarpetas cada vez
+            # Refrescar
+            archivos_en_raiz = buscar_archivos(ruta_principal)
             subcarpetas = listar_subcarpetas(ruta_principal)
 
-            if not subcarpetas:
-                print(f"\n❌ No se encontraron subcarpetas en: {ruta_principal.resolve()}")
+            print(f"\n📁 Contenido de '{ruta_principal.name}':\n")
+
+            opciones = []
+
+            # Opción de trabajar directamente en la carpeta si tiene archivos
+            if archivos_en_raiz:
+                print(f"   0. [ESTA CARPETA] ({len(archivos_en_raiz)} archivos: {', '.join(a.suffix for a in archivos_en_raiz[:5])})")
+                opciones.append(("raiz", ruta_principal))
+
+            # Listar subcarpetas
+            for i, carpeta in enumerate(subcarpetas, 1):
+                archivos_sub = buscar_archivos(carpeta)
+                print(f"   {i}. {carpeta.name}/ ({len(archivos_sub)} archivos)")
+                opciones.append(("sub", carpeta))
+
+            if not opciones:
+                print(f"\n❌ No hay archivos ni subcarpetas disponibles.")
                 break
 
-            for i, carpeta in enumerate(subcarpetas, 1):
-                print(f"   {i}. {carpeta.name}")
-
-            print(f"\n   Selecciona el número de la carpeta (1-{len(subcarpetas)})")
+            print(f"\n   Selecciona una opción (0={len(archivos_en_raiz)} archivos aquí, 1-{len(subcarpetas)} subcarpetas)")
             print(f"   o escribe 'cambiar' para otra carpeta principal, 'salir' para terminar:")
             entrada_sub = input("   > ").strip().lower()
 
@@ -368,14 +381,17 @@ def main():
 
             try:
                 seleccion = int(entrada_sub)
-                if seleccion < 1 or seleccion > len(subcarpetas):
-                    print("\n❌ Selección fuera de rango.")
+                if seleccion == 0 and archivos_en_raiz:
+                    carpeta_trabajo = ruta_principal
+                elif seleccion < 1 or seleccion > len(subcarpetas):
+                    print(f"\n❌ Selección fuera de rango (0-{len(subcarpetas)}).")
                     continue
+                else:
+                    carpeta_trabajo = subcarpetas[seleccion - 1]
             except ValueError:
                 print("\n❌ Debes ingresar un número válido.")
                 continue
 
-            carpeta_trabajo = subcarpetas[seleccion - 1]
             print(f"\n✅ Carpeta seleccionada: {carpeta_trabajo.name}")
 
             # -----------------------------------------------------------------

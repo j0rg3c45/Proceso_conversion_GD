@@ -32,8 +32,10 @@ uv run Proceso_conversion_GD/geospatial/csv_xlx_to_shape.py
                        │
                        ▼
 ┌─────────────────────────────────────────────┐
-│  2. Listar subcarpetas disponibles          │
-│     y pedir selección al usuario            │
+│  2. Listar contenido de la carpeta:         │
+│     - Opción 0: trabajar aquí (si tiene     │
+│       archivos válidos directamente)        │
+│     - Opciones 1-N: subcarpetas             │
 └──────────────────────┬──────────────────────┘
                        │
                        ▼
