@@ -105,9 +105,10 @@ uv run Proceso_conversion_GD/geospatial/shp_to_geojson.py
 - Descarta automáticamente puntos y líneas de la carpeta filtro
 - Cada filtro genera su propio par de carpetas (SHP + GeoJSON)
 - Reproyecta todo a WGS84 (EPSG:4326)
-- Solo usa archivos de tipo Polygon/MultiPolygon como filtro
-- Descarta automáticamente puntos y líneas
-- Reproyecta todo a WGS84 (EPSG:4326)
+
+**Selección de archivos a filtrar:**
+- Lista todos los `.shp` encontrados con número
+- Permite seleccionar: todos (Enter), por número (1,3,5) o por rango (1-4)
 
 **Ejecución:**
 ```bash
