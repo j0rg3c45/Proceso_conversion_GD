@@ -66,6 +66,7 @@ Este proyecto maneja datos geoespaciales de la ciudad de Santiago de Cali, Colom
 - Si la carpeta tiene archivos válidos directamente → opción `0` para trabajar ahí
 - Si tiene subcarpetas → opciones `1-N` para entrar a una
 - Muestra cantidad de archivos por cada opción
+- Excluye automáticamente `log_errores.txt` de la lista de archivos
 
 **Columnas de coordenadas reconocidas:**
 - Latitud: `latitud`, `lat`, `latitude`, `y`
@@ -82,12 +83,20 @@ Este proyecto maneja datos geoespaciales de la ciudad de Santiago de Cali, Colom
 - Lee todas las hojas y las concatena automáticamente
 - Renombra columnas duplicadas (agrega sufijo `_1`, `_2`, etc.)
 
-**Shapefile:**
-- Trunca nombres de columna a 10 caracteres (limitación del formato)
-- Genera nombres únicos si el truncado causa colisiones
-- GeoJSON conserva nombres completos
+**Limpieza de datos para Shapefile:**
+- Nombres de columna: elimina espacios, comas, puntos, tildes, ñ → reemplaza por `_`
+- Trunca nombres a 10 caracteres con unicidad garantizada
+- Convierte TODOS los valores a string (evita problemas de tipos)
+- Rellena NaN con vacío
+- Fuerza ASCII en valores (reemplaza caracteres no-ASCII)
+- Trunca valores a 254 caracteres (límite .dbf)
+- Elimina columnas duplicadas
+- Limita a 255 columnas máximo
+- Encoding: UTF-8 con archivo .cpg para ArcGIS
 
 **Separadores soportados:** coma (`,`), punto y coma (`;`), tabulador (`\t`)
+
+**Problema resuelto:** Archivos Excel con campos numéricos grandes, tipos mixtos, caracteres especiales y NaN ahora se exportan correctamente forzando todo a string ASCII.
 
 **Ejecución (desde Proceso_conversion_GD/):**
 ```bash
