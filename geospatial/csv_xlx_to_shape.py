@@ -529,6 +529,20 @@ def main():
                     # Resetear índice para evitar problemas en exportación
                     gdf = gdf.reset_index(drop=True)
 
+                    # Convertir tipos no soportados por Shapefile a string
+                    for col in gdf.columns:
+                        if col == "geometry":
+                            continue
+                        dtype = gdf[col].dtype
+                        # Shapefile solo soporta: int, float, str, date
+                        if dtype == "object":
+                            # Asegurar que sean strings puros
+                            gdf[col] = gdf[col].astype(str).replace("None", "").replace("nan", "")
+                        elif "datetime" in str(dtype):
+                            gdf[col] = gdf[col].astype(str)
+                        elif "timedelta" in str(dtype):
+                            gdf[col] = gdf[col].astype(str)
+
                     print(f"    📋 Columnas en salida: {len(gdf.columns) - 1} atributos + geometry")
 
                     # Exportar a Shapefile (eliminar existentes primero)
