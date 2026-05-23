@@ -554,8 +554,22 @@ def main():
                         if archivo_previo.exists():
                             archivo_previo.unlink()
 
-                    # Truncar nombres de columna para Shapefile (máx 10 chars)
+                    # Preparar nombres de columna para Shapefile
+                    # (sin espacios, sin caracteres especiales, máx 10 chars)
                     gdf_shp = gdf.copy()
+
+                    # Primero: limpiar caracteres no válidos (espacios, puntos, etc.)
+                    renombrar_limpieza = {}
+                    for col in gdf_shp.columns:
+                        if col == "geometry":
+                            continue
+                        col_limpio = col.replace(" ", "_").replace(".", "_").replace("-", "_")
+                        if col_limpio != col:
+                            renombrar_limpieza[col] = col_limpio
+                    if renombrar_limpieza:
+                        gdf_shp = gdf_shp.rename(columns=renombrar_limpieza)
+
+                    # Segundo: truncar a 10 caracteres con nombres únicos
                     columnas_originales = [col for col in gdf_shp.columns if col != "geometry"]
                     columnas_truncadas = {}
                     nombres_usados = set()
