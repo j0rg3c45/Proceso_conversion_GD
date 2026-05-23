@@ -544,6 +544,23 @@ def main():
                         gdf = gdf.rename(columns=renombrar_base)
                         print(f"    ⚠️  {len(renombrar_base)} columna(s) con espacios/caracteres especiales limpiadas")
 
+                    # Verificar que no haya columnas duplicadas después de limpiar
+                    cols_check = [c for c in gdf.columns if c != "geometry"]
+                    if len(cols_check) != len(set(cols_check)):
+                        conteo = {}
+                        cols_final = []
+                        for col in gdf.columns:
+                            if col == "geometry":
+                                cols_final.append(col)
+                                continue
+                            if col in conteo:
+                                conteo[col] += 1
+                                cols_final.append(f"{col}_{conteo[col]}")
+                            else:
+                                conteo[col] = 0
+                                cols_final.append(col)
+                        gdf.columns = cols_final
+
                     # Convertir tipos no soportados por Shapefile a string
                     for col in gdf.columns:
                         if col == "geometry":
@@ -551,12 +568,21 @@ def main():
                         dtype = gdf[col].dtype
                         # Shapefile solo soporta: int, float, str, date
                         if dtype == "object":
-                            # Asegurar que sean strings puros
+                            # Asegurar que sean strings puros y truncar a 254 chars
                             gdf[col] = gdf[col].astype(str).replace("None", "").replace("nan", "")
+                            gdf[col] = gdf[col].str[:254]
                         elif "datetime" in str(dtype):
                             gdf[col] = gdf[col].astype(str)
                         elif "timedelta" in str(dtype):
                             gdf[col] = gdf[col].astype(str)
+                        elif "int" in str(dtype):
+                            # Convertir int64 a float para evitar overflow en dbf
+                            try:
+                                gdf[col] = gdf[col].astype(float)
+                            except (ValueError, TypeError):
+                                gdf[col] = gdf[col].astype(str)
+                        elif "bool" in str(dtype):
+                            gdf[col] = gdf[col].astype(int)
 
                     print(f"    📋 Columnas en salida: {len(gdf.columns) - 1} atributos + geometry")
 
