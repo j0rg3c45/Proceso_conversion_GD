@@ -579,12 +579,12 @@ def main():
                         gdf_shp = gdf_shp.rename(columns=columnas_truncadas)
                         print(f"    ⚠️  SHP: {len(columnas_truncadas)} columnas truncadas a 10 chars")
 
-                    gdf_shp.to_file(ruta_shp, driver="ESRI Shapefile", encoding="utf-8")
+                    gdf_shp.to_file(ruta_shp, driver="ESRI Shapefile", encoding="latin-1")
 
                     # Generar archivo .cpg para que ArcGIS reconozca la codificación
                     ruta_cpg = carpeta_shape / f"{nombre_salida}.cpg"
                     with open(ruta_cpg, "w") as f:
-                        f.write("UTF-8")
+                        f.write("ISO-8859-1")
 
                     # Exportar a GeoJSON (sin truncar, conserva nombres completos)
                     ruta_geojson = carpeta_geojson / f"{nombre_salida}.geojson"
