@@ -544,6 +544,24 @@ def main():
                         gdf = gdf.rename(columns=renombrar_base)
                         print(f"    ⚠️  {len(renombrar_base)} columna(s) con espacios/caracteres especiales limpiadas")
 
+                    # Truncar nombres a 10 chars con unicidad garantizada (requisito Shapefile)
+                    cols_nuevos = []
+                    nombres_usados = set()
+                    for col in gdf.columns:
+                        if col == "geometry":
+                            cols_nuevos.append(col)
+                            continue
+                        nombre = col[:10]
+                        if nombre in nombres_usados:
+                            contador = 1
+                            while nombre in nombres_usados:
+                                sufijo = str(contador)
+                                nombre = col[:10 - len(sufijo)] + sufijo
+                                contador += 1
+                        nombres_usados.add(nombre)
+                        cols_nuevos.append(nombre)
+                    gdf.columns = cols_nuevos
+
                     # Verificar que no haya columnas duplicadas después de limpiar
                     cols_check = [c for c in gdf.columns if c != "geometry"]
                     if len(cols_check) != len(set(cols_check)):
@@ -582,34 +600,8 @@ def main():
                         if archivo_previo.exists():
                             archivo_previo.unlink()
 
-                    # Preparar nombres de columna para Shapefile (máx 10 chars)
-                    gdf_shp = gdf.copy()
-
-                    # Truncar a 10 caracteres con nombres únicos
-                    columnas_originales = [col for col in gdf_shp.columns if col != "geometry"]
-                    columnas_truncadas = {}
-                    nombres_usados = set()
-
-                    for col in columnas_originales:
-                        if len(col) > 10:
-                            nombre_base = col[:10]
-                            nombre_nuevo = nombre_base
-                            contador = 1
-                            # Asegurar que no se repita
-                            while nombre_nuevo in nombres_usados:
-                                sufijo = str(contador)
-                                nombre_nuevo = col[:10 - len(sufijo)] + sufijo
-                                contador += 1
-                            columnas_truncadas[col] = nombre_nuevo
-                            nombres_usados.add(nombre_nuevo)
-                        else:
-                            nombres_usados.add(col)
-
-                    if columnas_truncadas:
-                        gdf_shp = gdf_shp.rename(columns=columnas_truncadas)
-                        print(f"    ⚠️  SHP: {len(columnas_truncadas)} columnas truncadas a 10 chars")
-
-                    gdf_shp.to_file(ruta_shp, driver="ESRI Shapefile", encoding="latin-1")
+                    # Exportar directamente - geopandas maneja el truncado de nombres
+                    gdf.to_file(ruta_shp, driver="ESRI Shapefile", encoding="latin-1")
 
                     # Generar archivo .cpg para que ArcGIS reconozca la codificación
                     ruta_cpg = carpeta_shape / f"{nombre_salida}.cpg"
