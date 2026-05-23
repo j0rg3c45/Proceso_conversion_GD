@@ -537,7 +537,7 @@ def main():
                     for col in gdf.columns:
                         if col == "geometry":
                             continue
-                        col_limpio = col.replace(" ", "_").replace(".", "_").replace("-", "_")
+                        col_limpio = col.replace(" ", "_").replace(".", "_").replace("-", "_").replace(",", "").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u").replace("ñ", "n")
                         if col_limpio != col:
                             renombrar_base[col] = col_limpio
                     if renombrar_base:
@@ -561,33 +561,15 @@ def main():
                                 cols_final.append(col)
                         gdf.columns = cols_final
 
-                    # Convertir tipos no soportados por Shapefile a string
+                    # Convertir TODAS las columnas a string para máxima compatibilidad con Shapefile
                     for col in gdf.columns:
                         if col == "geometry":
                             continue
-                        dtype = gdf[col].dtype
-
-                        # Rellenar NaN según el tipo
-                        if "float" in str(dtype) or "int" in str(dtype):
-                            gdf[col] = gdf[col].fillna(0)
-                        else:
-                            gdf[col] = gdf[col].fillna("")
-
-                        # Shapefile solo soporta: int, float, str, date
-                        dtype = gdf[col].dtype  # Re-evaluar después de fillna
-                        if dtype == "object":
-                            gdf[col] = gdf[col].astype(str).str[:254]
-                        elif "datetime" in str(dtype):
-                            gdf[col] = gdf[col].astype(str)
-                        elif "timedelta" in str(dtype):
-                            gdf[col] = gdf[col].astype(str)
-                        elif "int" in str(dtype):
-                            try:
-                                gdf[col] = gdf[col].astype(float)
-                            except (ValueError, TypeError):
-                                gdf[col] = gdf[col].astype(str)
-                        elif "bool" in str(dtype):
-                            gdf[col] = gdf[col].astype(int)
+                        gdf[col] = gdf[col].fillna("").astype(str)
+                        # Reemplazar 'nan' y 'None' por vacío
+                        gdf[col] = gdf[col].replace({"nan": "", "None": "", "NaT": ""})
+                        # Truncar a 254 caracteres (límite Shapefile)
+                        gdf[col] = gdf[col].str[:254]
 
                     print(f"    📋 Columnas en salida: {len(gdf.columns) - 1} atributos + geometry")
 
