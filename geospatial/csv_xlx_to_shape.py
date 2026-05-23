@@ -562,6 +562,16 @@ def main():
                         cols_nuevos.append(nombre)
                     gdf.columns = cols_nuevos
 
+                    # Eliminar columnas duplicadas si aún existen
+                    gdf = gdf.loc[:, ~gdf.columns.duplicated()]
+
+                    # Limitar a máximo 255 columnas (límite Shapefile)
+                    max_cols = 255
+                    cols_sin_geom = [c for c in gdf.columns if c != "geometry"]
+                    if len(cols_sin_geom) > max_cols:
+                        print(f"    ⚠️  Demasiadas columnas ({len(cols_sin_geom)}), limitando a {max_cols}")
+                        gdf = gdf[cols_sin_geom[:max_cols] + ["geometry"]]
+
                     # Verificar que no haya columnas duplicadas después de limpiar
                     cols_check = [c for c in gdf.columns if c != "geometry"]
                     if len(cols_check) != len(set(cols_check)):
@@ -586,6 +596,8 @@ def main():
                         gdf[col] = gdf[col].fillna("").astype(str)
                         # Reemplazar 'nan' y 'None' por vacío
                         gdf[col] = gdf[col].replace({"nan": "", "None": "", "NaT": ""})
+                        # Eliminar caracteres no-ASCII que pueden romper el .dbf
+                        gdf[col] = gdf[col].apply(lambda x: x.encode("ascii", errors="replace").decode("ascii"))
                         # Truncar a 254 caracteres (límite Shapefile)
                         gdf[col] = gdf[col].str[:254]
 
@@ -601,12 +613,12 @@ def main():
                             archivo_previo.unlink()
 
                     # Exportar directamente - geopandas maneja el truncado de nombres
-                    gdf.to_file(ruta_shp, driver="ESRI Shapefile", encoding="latin-1")
+                    gdf.to_file(ruta_shp, driver="ESRI Shapefile", encoding="utf-8")
 
                     # Generar archivo .cpg para que ArcGIS reconozca la codificación
                     ruta_cpg = carpeta_shape / f"{nombre_salida}.cpg"
                     with open(ruta_cpg, "w") as f:
-                        f.write("ISO-8859-1")
+                        f.write("UTF-8")
 
                     # Exportar a GeoJSON (sin truncar, conserva nombres completos)
                     ruta_geojson = carpeta_geojson / f"{nombre_salida}.geojson"
