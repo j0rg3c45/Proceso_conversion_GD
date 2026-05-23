@@ -581,6 +581,11 @@ def main():
 
                     gdf_shp.to_file(ruta_shp, driver="ESRI Shapefile", encoding="utf-8")
 
+                    # Generar archivo .cpg para que ArcGIS reconozca la codificación
+                    ruta_cpg = carpeta_shape / f"{nombre_salida}.cpg"
+                    with open(ruta_cpg, "w") as f:
+                        f.write("UTF-8")
+
                     # Exportar a GeoJSON (sin truncar, conserva nombres completos)
                     ruta_geojson = carpeta_geojson / f"{nombre_salida}.geojson"
                     if ruta_geojson.exists():
