@@ -84,11 +84,14 @@ def buscar_archivos(carpeta: Path) -> list:
     """
     Busca archivos con extensiones válidas (.csv, .txt, .xlsx, .xls)
     dentro de la carpeta indicada (sin recursión).
+    Excluye archivos de log generados por este script.
     """
     archivos = []
+    excluir = {"log_errores.txt", "log_errores_filtro.txt"}
     for item in sorted(carpeta.iterdir()):
         if item.is_file() and item.suffix.lower() in EXTENSIONES_VALIDAS:
-            archivos.append(item)
+            if item.name.lower() not in excluir:
+                archivos.append(item)
     return archivos
 
 
@@ -529,6 +532,18 @@ def main():
                     # Resetear índice para evitar problemas en exportación
                     gdf = gdf.reset_index(drop=True)
 
+                    # Limpiar nombres de columna (sin espacios ni caracteres especiales)
+                    renombrar_base = {}
+                    for col in gdf.columns:
+                        if col == "geometry":
+                            continue
+                        col_limpio = col.replace(" ", "_").replace(".", "_").replace("-", "_")
+                        if col_limpio != col:
+                            renombrar_base[col] = col_limpio
+                    if renombrar_base:
+                        gdf = gdf.rename(columns=renombrar_base)
+                        print(f"    ⚠️  {len(renombrar_base)} columna(s) con espacios/caracteres especiales limpiadas")
+
                     # Convertir tipos no soportados por Shapefile a string
                     for col in gdf.columns:
                         if col == "geometry":
@@ -554,22 +569,10 @@ def main():
                         if archivo_previo.exists():
                             archivo_previo.unlink()
 
-                    # Preparar nombres de columna para Shapefile
-                    # (sin espacios, sin caracteres especiales, máx 10 chars)
+                    # Preparar nombres de columna para Shapefile (máx 10 chars)
                     gdf_shp = gdf.copy()
 
-                    # Primero: limpiar caracteres no válidos (espacios, puntos, etc.)
-                    renombrar_limpieza = {}
-                    for col in gdf_shp.columns:
-                        if col == "geometry":
-                            continue
-                        col_limpio = col.replace(" ", "_").replace(".", "_").replace("-", "_")
-                        if col_limpio != col:
-                            renombrar_limpieza[col] = col_limpio
-                    if renombrar_limpieza:
-                        gdf_shp = gdf_shp.rename(columns=renombrar_limpieza)
-
-                    # Segundo: truncar a 10 caracteres con nombres únicos
+                    # Truncar a 10 caracteres con nombres únicos
                     columnas_originales = [col for col in gdf_shp.columns if col != "geometry"]
                     columnas_truncadas = {}
                     nombres_usados = set()
