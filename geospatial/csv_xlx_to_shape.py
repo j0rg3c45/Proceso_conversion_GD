@@ -566,17 +566,22 @@ def main():
                         if col == "geometry":
                             continue
                         dtype = gdf[col].dtype
+
+                        # Rellenar NaN según el tipo
+                        if "float" in str(dtype) or "int" in str(dtype):
+                            gdf[col] = gdf[col].fillna(0)
+                        else:
+                            gdf[col] = gdf[col].fillna("")
+
                         # Shapefile solo soporta: int, float, str, date
+                        dtype = gdf[col].dtype  # Re-evaluar después de fillna
                         if dtype == "object":
-                            # Asegurar que sean strings puros y truncar a 254 chars
-                            gdf[col] = gdf[col].astype(str).replace("None", "").replace("nan", "")
-                            gdf[col] = gdf[col].str[:254]
+                            gdf[col] = gdf[col].astype(str).str[:254]
                         elif "datetime" in str(dtype):
                             gdf[col] = gdf[col].astype(str)
                         elif "timedelta" in str(dtype):
                             gdf[col] = gdf[col].astype(str)
                         elif "int" in str(dtype):
-                            # Convertir int64 a float para evitar overflow en dbf
                             try:
                                 gdf[col] = gdf[col].astype(float)
                             except (ValueError, TypeError):
