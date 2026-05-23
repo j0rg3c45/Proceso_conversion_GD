@@ -59,7 +59,13 @@ Este proyecto maneja datos geoespaciales de la ciudad de Santiago de Cali, Colom
 
 **Cuándo usar:**
 - Cuando recibes datos en CSV/Excel con columnas de latitud y longitud
+- Cuando el archivo tiene una columna `geometry` con WKT
 - Cuando necesitas generar Shapefiles o GeoJSON a partir de datos tabulares
+
+**Navegación de carpetas:**
+- Si la carpeta tiene archivos válidos directamente → opción `0` para trabajar ahí
+- Si tiene subcarpetas → opciones `1-N` para entrar a una
+- Muestra cantidad de archivos por cada opción
 
 **Columnas de coordenadas reconocidas:**
 - Latitud: `latitud`, `lat`, `latitude`, `y`
@@ -72,11 +78,20 @@ Este proyecto maneja datos geoespaciales de la ciudad de Santiago de Cali, Colom
   - X entre 1.000.000 y 1.200.000 → EPSG:3115 (Colombia Oeste / Cali)
   - Otras coordenadas planas → EPSG:3116 (Colombia Bogotá)
 
+**Manejo de Excel:**
+- Lee todas las hojas y las concatena automáticamente
+- Renombra columnas duplicadas (agrega sufijo `_1`, `_2`, etc.)
+
+**Shapefile:**
+- Trunca nombres de columna a 10 caracteres (limitación del formato)
+- Genera nombres únicos si el truncado causa colisiones
+- GeoJSON conserva nombres completos
+
 **Separadores soportados:** coma (`,`), punto y coma (`;`), tabulador (`\t`)
 
-**Ejecución:**
+**Ejecución (desde Proceso_conversion_GD/):**
 ```bash
-uv run Proceso_conversion_GD/geospatial/csv_xlx_to_shape.py
+uv run geospatial/csv_xlx_to_shape.py
 ```
 
 ### 2. shp_to_geojson.py
@@ -87,9 +102,9 @@ uv run Proceso_conversion_GD/geospatial/csv_xlx_to_shape.py
 - Cuando necesitas GeoJSON para visualización web
 - Cuando necesitas reproyectar datos a WGS84
 
-**Ejecución:**
+**Ejecución (desde Proceso_conversion_GD/):**
 ```bash
-uv run Proceso_conversion_GD/geospatial/shp_to_geojson.py
+uv run geospatial/shp_to_geojson.py
 ```
 
 ### 3. filtro_espacial_geojson.py
@@ -110,9 +125,9 @@ uv run Proceso_conversion_GD/geospatial/shp_to_geojson.py
 - Lista todos los `.shp` encontrados con número
 - Permite seleccionar: todos (Enter), por número (1,3,5) o por rango (1-4)
 
-**Ejecución:**
+**Ejecución (desde Proceso_conversion_GD/):**
 ```bash
-uv run Proceso_conversion_GD/geospatial/filtro_espacial_geojson.py
+uv run geospatial/filtro_espacial_geojson.py
 ```
 
 ## Sistema de referencia
@@ -130,7 +145,9 @@ Todos los archivos de salida se generan en **WGS84 (EPSG:4326)**. El sistema man
 1. **Sin duplicados:** Todos los scripts eliminan registros donde todas las columnas (incluyendo geometría) son idénticas
 2. **Sin nulos en coordenadas:** Los registros con coordenadas vacías o no numéricas se filtran antes de la conversión
 3. **Sobrescritura limpia:** Los archivos de salida siempre se sobrescriben completamente, sin acumular datos de ejecuciones anteriores
-4. **Log de errores:** Si un archivo falla, se registra en `log_errores.txt` y el proceso continúa
+4. **Columnas duplicadas:** Si un archivo tiene columnas con el mismo nombre, se renombran automáticamente con sufijo `_1`, `_2`, etc.
+5. **Truncado seguro:** Los nombres de columna en Shapefile se truncan a 10 chars con nombres únicos garantizados
+6. **Log de errores:** Si un archivo falla, se registra en `log_errores.txt` y el proceso continúa
 
 ## Estructura de carpetas del proyecto
 
