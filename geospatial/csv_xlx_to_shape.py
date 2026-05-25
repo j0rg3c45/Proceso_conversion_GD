@@ -461,6 +461,8 @@ def main():
             exitosos = 0
             errores = 0
             log_errores = []
+            reporte_duplicados = []
+            any_duplicados = False
             total_registros = 0
 
             for archivo in archivos:
@@ -502,6 +504,8 @@ def main():
 
                     if duplicados > 0:
                         print(f"    📊 Registros leídos: {total_leidos} | Únicos: {unicos} | Duplicados eliminados: {duplicados}")
+                        reporte_duplicados.append(f"{archivo.name}: {duplicados} duplicados eliminados (de {total_leidos} → {unicos} únicos)")
+                        any_duplicados = True
                     else:
                         print(f"    📊 Registros leídos: {total_leidos} (sin duplicados)")
 
@@ -638,16 +642,25 @@ def main():
             # -----------------------------------------------------------------
             # 7. Generar log de errores
             # -----------------------------------------------------------------
-            if log_errores:
+            if log_errores or any_duplicados:
                 ruta_log = carpeta_trabajo / "log_errores.txt"
                 with open(ruta_log, "w", encoding="utf-8") as f:
-                    f.write(f"LOG DE ERRORES - Conversión espacial\n")
+                    f.write(f"REPORTE DE CONVERSIÓN ESPACIAL\n")
                     f.write(f"Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                     f.write(f"Carpeta: {carpeta_trabajo.resolve()}\n")
                     f.write("=" * 70 + "\n\n")
-                    for i, error in enumerate(log_errores, 1):
-                        f.write(f"{i}. {error}\n")
-                print(f"\n📝 Log de errores guardado en: {ruta_log.name}")
+                    if reporte_duplicados:
+                        f.write("REGISTROS DUPLICADOS ELIMINADOS:\n")
+                        f.write("-" * 40 + "\n")
+                        for item in reporte_duplicados:
+                            f.write(f"  {item}\n")
+                        f.write("\n")
+                    if log_errores:
+                        f.write("ERRORES:\n")
+                        f.write("-" * 40 + "\n")
+                        for i, error in enumerate(log_errores, 1):
+                            f.write(f"  {i}. {error}\n")
+                print(f"\n📝 Reporte guardado en: {ruta_log.name}")
 
             # -----------------------------------------------------------------
             # 8. Resumen final

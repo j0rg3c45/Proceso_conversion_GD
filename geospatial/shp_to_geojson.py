@@ -61,6 +61,7 @@ def main():
 
     exitosos = 0
     errores = 0
+    reporte_duplicados = []
 
     for shp_path in shp_files:
         output_name = shp_path.stem + ".geojson"
@@ -86,6 +87,7 @@ def main():
 
             if duplicados > 0:
                 print(f"    📊 Registros leídos: {total_leidos} | Únicos: {unicos} | Duplicados eliminados: {duplicados}")
+                reporte_duplicados.append(f"{shp_path.name}: {duplicados} duplicados eliminados (de {total_leidos} → {unicos} únicos)")
             else:
                 print(f"    📊 Registros leídos: {total_leidos} (sin duplicados)")
 
@@ -102,8 +104,21 @@ def main():
     # Resumen
     print("\n" + "=" * 60)
     print(f"  RESUMEN: {exitosos} convertidos | {errores} errores")
+    if reporte_duplicados:
+        print(f"  🔄 Archivos con duplicados: {len(reporte_duplicados)}")
     print(f"  Archivos en: {output_dir.resolve()}")
     print("=" * 60)
+
+    # Generar reporte si hubo duplicados
+    if reporte_duplicados:
+        ruta_reporte = output_dir / "reporte_duplicados.txt"
+        with open(ruta_reporte, "w", encoding="utf-8") as f:
+            f.write(f"REPORTE DE DUPLICADOS - Conversión SHP a GeoJSON\n")
+            f.write(f"Fecha: {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 60 + "\n\n")
+            for item in reporte_duplicados:
+                f.write(f"  {item}\n")
+        print(f"  📝 Reporte: {ruta_reporte.name}")
 
 
 if __name__ == "__main__":
