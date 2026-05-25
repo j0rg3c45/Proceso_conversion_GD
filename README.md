@@ -35,10 +35,12 @@ Convierte archivos `.csv`, `.txt`, `.xlsx`, `.xls` con coordenadas a Shapefile y
 
 **Características:**
 - Detección automática de separador (`,` `;` `\t`) ignorando contenido entre comillas
-- Detección automática de columnas de coordenadas (lat/lon)
-- Deduplicación: elimina registros con todas las columnas iguales
+- Detección automática de columnas de coordenadas (lat/lon) o geometría WKT
+- Reproyección automática de MAGNA-SIRGAS a WGS84
+- Deduplicación: elimina registros repetidos y genera reporte con detalle
+- Manejo de Excel multi-hojas con columnas duplicadas
+- Limpieza de nombres y tipos para compatibilidad con ArcGIS
 - Bucle interactivo: procesa múltiples carpetas sin reiniciar
-- Sobrescritura limpia de archivos existentes
 - CRS de salida: WGS84 (EPSG:4326)
 
 ```bash
@@ -64,10 +66,10 @@ Filtra archivos `.shp` usando polígonos de recorte. Cada polígono filtro se ap
 
 **Características:**
 - Validación automática: solo usa archivos de tipo Polygon/MultiPolygon como filtro
-- Descarta automáticamente puntos y líneas de la carpeta filtro
+- Selección de archivos: todos, por número (1,3,5) o por rango (1-4)
 - Cada filtro genera su propio par de carpetas (SHP + GeoJSON)
 - Reproyección automática a WGS84 sin importar el CRS de entrada
-- Deduplicación por atributos + geometría
+- Deduplicación por atributos + geometría con reporte detallado
 - Nombres de salida incluyen referencia al filtro usado
 
 ```bash

@@ -255,6 +255,24 @@ No importa el CRS de los archivos de entrada. El script:
 
 Después del filtrado espacial, se eliminan registros donde todos los atributos y la geometría son idénticos.
 
+El reporte `log_errores_filtro.txt` incluye:
+- Listado de duplicados eliminados por archivo y filtro
+- Errores de procesamiento
+
+```
+REPORTE DE FILTRADO ESPACIAL
+======================================================================
+
+REGISTROS DUPLICADOS ELIMINADOS:
+----------------------------------------
+  comparendos_2023.shp (filtro: comuna_7): 50 duplicados eliminados
+  accidentes_2024.shp (filtro: comuna_13): 10 duplicados eliminados
+
+ERRORES:
+----------------------------------------
+  1. Sin registros dentro del polígono: puntos_control.shp (filtro: comuna_7)
+```
+
 ## Manejo de errores
 
 El script NO se detiene ante errores. Si un archivo:

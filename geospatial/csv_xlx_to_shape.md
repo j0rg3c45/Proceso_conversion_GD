@@ -104,6 +104,25 @@ Si no hay duplicados:
 
 Solo los registros únicos se exportan a los archivos de salida.
 
+### Reporte de duplicados
+
+Se genera un archivo `log_errores.txt` con el detalle de duplicados eliminados por archivo:
+
+```
+REPORTE DE CONVERSIÓN ESPACIAL
+Fecha: 2026-05-25 14:30:00
+======================================================================
+
+REGISTROS DUPLICADOS ELIMINADOS:
+----------------------------------------
+  comparendos_2023.csv: 46260 duplicados eliminados (de 61680 → 15420 únicos)
+  accidentes_2024.xlsx: 50 duplicados eliminados (de 3250 → 3200 únicos)
+
+ERRORES:
+----------------------------------------
+  1. No se detectaron coordenadas: archivo_sin_coords.txt
+```
+
 ## Detección automática de separador
 
 El script analiza la primera línea del archivo (header) ignorando contenido entre comillas dobles para determinar el separador real:

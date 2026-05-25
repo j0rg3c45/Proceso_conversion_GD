@@ -151,12 +151,13 @@ Todos los archivos de salida se generan en **WGS84 (EPSG:4326)**. El sistema man
 
 ## Reglas de calidad de datos
 
-1. **Sin duplicados:** Todos los scripts eliminan registros donde todas las columnas (incluyendo geometría) son idénticas
-2. **Sin nulos en coordenadas:** Los registros con coordenadas vacías o no numéricas se filtran antes de la conversión
-3. **Sobrescritura limpia:** Los archivos de salida siempre se sobrescriben completamente, sin acumular datos de ejecuciones anteriores
-4. **Columnas duplicadas:** Si un archivo tiene columnas con el mismo nombre, se renombran automáticamente con sufijo `_1`, `_2`, etc.
-5. **Truncado seguro:** Los nombres de columna en Shapefile se truncan a 10 chars con nombres únicos garantizados
-6. **Log de errores:** Si un archivo falla, se registra en `log_errores.txt` y el proceso continúa
+1. **Sin duplicados:** Todos los scripts eliminan registros donde todas las columnas (incluyendo geometría) son idénticas. Se conserva solo un valor único por cada grupo repetido.
+2. **Reporte de duplicados:** Cada script genera un archivo de reporte (`.txt`) listando cuántos duplicados se eliminaron por archivo, con detalle de registros originales vs únicos.
+3. **Sin nulos en coordenadas:** Los registros con coordenadas vacías o no numéricas se filtran antes de la conversión
+4. **Sobrescritura limpia:** Los archivos de salida siempre se sobrescriben completamente, sin acumular datos de ejecuciones anteriores
+5. **Columnas duplicadas:** Si un archivo tiene columnas con el mismo nombre, se renombran automáticamente con sufijo `_1`, `_2`, etc.
+6. **Truncado seguro:** Los nombres de columna en Shapefile se truncan a 10 chars con nombres únicos garantizados
+7. **Log combinado:** El reporte incluye tanto duplicados eliminados como errores en un solo archivo
 
 ## Estructura de carpetas del proyecto
 
