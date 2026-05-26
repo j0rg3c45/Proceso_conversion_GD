@@ -139,6 +139,25 @@ uv run geospatial/shp_to_geojson.py
 uv run geospatial/filtro_espacial_geojson.py
 ```
 
+### 4. unificar_ipm_variables.py
+
+**Propósito:** Unificar múltiples pestañas de un Excel de IPM en una sola tabla (Excel + DBF).
+
+**Cuándo usar:**
+- Cuando el archivo de IPM tiene variables separadas por pestañas y necesitas una sola tabla consolidada por manzana.
+- Cuando necesitas un archivo compatible con ArcGIS para realizar un Join con capas geográficas.
+
+**Características:**
+- **Ajuste de ID**: Elimina automáticamente el "01" en las posiciones 7-8 del `cod_mzn` (pasa de 24 a 22 caracteres) para coincidir con el estándar geográfico de Cali.
+- **Exportación Dual**: Genera tanto un `.xlsx` (con diccionario) como un `.dbf` (optimizado para ArcGIS).
+- **Limpieza de Nombres**: En el DBF, limpia y trunca los nombres de columna a 10 caracteres.
+- **Manejo de Nulos**: Rellena `NaN` con `0` en el DBF para evitar errores de Join.
+
+**Ejecución (desde Proceso_conversion_GD/):**
+```bash
+uv run geospatial/unificar_ipm_variables.py
+```
+
 ## Sistema de referencia
 
 Todos los archivos de salida se generan en **WGS84 (EPSG:4326)**. El sistema maneja automáticamente:

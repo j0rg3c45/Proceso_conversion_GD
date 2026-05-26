@@ -76,6 +76,19 @@ Filtra archivos `.shp` usando polígonos de recorte. Cada polígono filtro se ap
 uv run Proceso_conversion_GD/geospatial/filtro_espacial_geojson.py
 ```
 
+### 4. `unificar_ipm_variables.py` — Unificación de variables IPM
+
+Consolida múltiples pestañas de un archivo Excel de IPM en una única tabla unificada usando el código de manzana.
+
+**Características:**
+- Merge automático de todas las pestañas (excepto Diccionario)
+- Uso de `outer join` por `cod_mzn` para evitar pérdida de datos
+- Genera archivo Excel consolidado
+
+```bash
+uv run Proceso_conversion_GD/geospatial/unificar_ipm_variables.py
+```
+
 **Estructura de salida:**
 ```
 [salida]/
