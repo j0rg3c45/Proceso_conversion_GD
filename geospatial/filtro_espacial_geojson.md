@@ -58,12 +58,18 @@ Resultado: 3 pares de carpetas × M archivos de datos = 3×M archivos filtrados
 ```
 ┌─────────────────────────────────────────────┐
 │  1. Solicitar carpeta con polígonos filtro  │
-│     (cada .shp es un filtro independiente)  │
+│     - Opción de reusar filtro anterior      │
 └──────────────────────┬──────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────┐
-│  2. Solicitar carpeta con los .shp          │
+│  2. Seleccionar polígonos específicos       │
+│     - Permite elegir 1 o varios del folder  │
+└──────────────────────┬──────────────────────┘
+                       │
+                       ▼
+┌─────────────────────────────────────────────┐
+│  3. Solicitar carpeta con los .shp          │
 │     a filtrar y seleccionar:                │
 │     - todos (Enter)                         │
 │     - por número (1,3,5)                    │
@@ -72,37 +78,30 @@ Resultado: 3 pares de carpetas × M archivos de datos = 3×M archivos filtrados
                        │
                        ▼
 ┌─────────────────────────────────────────────┐
-│  3. Solicitar carpeta de salida             │
+│  4. Solicitar carpeta de salida             │
+│     - Opción de reusar salida anterior      │
 └──────────────────────┬──────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────┐
-│  4. Confirmar filtrado (s/n)                │
+│  5. Confirmar filtrado (s/n)                │
 └──────────────────────┬──────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────┐
-│  5. POR CADA polígono filtro:               │
+│  6. POR CADA polígono filtro:               │
 │     a. Cargar y reproyectar a WGS84        │
-│     b. Crear subcarpetas:                   │
-│        - shape_filtrado_[nombre_filtro]/    │
-│        - geojson_filtrado_[nombre_filtro]/ │
-│     c. POR CADA archivo de datos:           │
-│        - Reproyectar a WGS84               │
-│        - Spatial join (within)              │
-│        - Eliminar duplicados               │
-│        - Exportar *_filtrado_[filtro].shp  │
-│        - Exportar *_filtrado_[filtro].geojson│
+│     b. Crear subcarpetas                    │
+│     c. Filtrar cada archivo de datos        │
+│     d. Deduplicar y exportar                │
 └──────────────────────┬──────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────┐
-│  6. Generar log_errores_filtro.txt          │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│  7. Mostrar resumen final en consola        │
+│  7. Mostrar resumen y Menú Interactivo:     │
+│     1. Procesar otros datos (mismo filtro)  │
+│     2. Cambiar todo                         │
+│     3. Salir                                │
 └─────────────────────────────────────────────┘
 ```
 

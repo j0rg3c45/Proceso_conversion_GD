@@ -131,8 +131,13 @@ uv run geospatial/shp_to_geojson.py
 - Reproyecta todo a WGS84 (EPSG:4326)
 
 **Selección de archivos a filtrar:**
-- Lista todos los `.shp` encontrados con número
+- Lista todos los archivos encontrados con número (tanto para filtros como para datos)
 - Permite seleccionar: todos (Enter), por número (1,3,5) o por rango (1-4)
+
+**Bucle interactivo:**
+- Al finalizar un proceso, pregunta si se desea realizar otro filtrado.
+- Permite reusar la misma carpeta/archivos de filtro y la misma carpeta de salida.
+- Optimizado para procesar diferentes carpetas de datos con el mismo polígono de recorte.
 
 **Ejecución (desde Proceso_conversion_GD/):**
 ```bash

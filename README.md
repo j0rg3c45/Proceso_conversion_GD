@@ -67,6 +67,7 @@ Filtra archivos `.shp` usando polígonos de recorte. Cada polígono filtro se ap
 **Características:**
 - Validación automática: solo usa archivos de tipo Polygon/MultiPolygon como filtro
 - Selección de archivos: todos, por número (1,3,5) o por rango (1-4)
+- **Bucle interactivo**: Permite reusar el mismo filtro y carpeta de salida para procesar múltiples conjuntos de datos sin reiniciar el script.
 - Cada filtro genera su propio par de carpetas (SHP + GeoJSON)
 - Reproyección automática a WGS84 sin importar el CRS de entrada
 - Deduplicación por atributos + geometría con reporte detallado
