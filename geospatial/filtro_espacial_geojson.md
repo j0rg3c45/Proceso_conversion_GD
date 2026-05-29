@@ -1,20 +1,58 @@
-# Filtro Espacial por Polígono (Independiente por Filtro)
+# Filtro Espacial Geoespacial Experto
 
 ## Resumen
 
-Script en Python que filtra archivos Shapefile (`.shp`) usando **múltiples polígonos de recorte independientes**. Cada archivo `.shp` en la carpeta de filtro se trata como un filtro separado, generando subcarpetas de salida con el nombre del filtro correspondiente.
+Script avanzado en Python para el filtrado de archivos Shapefile (`.shp`) utilizando polígonos de zona como máscara. El script está diseñado para el procesamiento masivo, con capacidades de búsqueda recursiva y organización automática de resultados.
 
-Todos los archivos se reproyectan a **WGS84 (EPSG:4326)**, se eliminan duplicados y se exportan en dos formatos: Shapefile y GeoJSON.
+Todos los archivos resultantes se normalizan a **WGS84 (EPSG:4326)** y se someten a un proceso de deduplicación geométrica y de atributos.
+
+## Características Principales
+
+1.  **Escaneo Recursivo:** Identifica automáticamente todos los archivos `.shp` en la carpeta raíz y sus subcarpetas.
+2.  **Validación de Geometría:** Solo utiliza archivos de tipo `Polygon` o `MultiPolygon` como filtros de zona.
+3.  **Selección Flexible:** Permite procesar un archivo específico, una lista personalizada o todos de forma masiva.
+4.  **Deduplicación:** Elimina registros repetidos (geometría idéntica + atributos idénticos) para asegurar la integridad de los datos.
+5.  **Estructura Organizada:** Separa los formatos GeoJSON y Shapefile, organizando estos últimos por subcarpetas de zona.
 
 ## Requisitos
 
 - Python 3.12+
 - `uv` como gestor de ambiente
-- Librerías: `geopandas`, `pandas`, `shapely`
+- Librerías: `geopandas`, `pandas`, `shapely`, `fiona`
 
 ```bash
 uv pip install -r requirements.txt
 ```
+
+## Estructura de Salida (Nueva)
+
+El script genera una estructura limpia para evitar la mezcla de archivos:
+
+```
+[carpeta_salida]/
+├── geojson/
+│   ├── datos1_Zona_A.geojson
+│   ├── datos2_Zona_A.geojson
+│   └── datos1_Zona_B.geojson
+└── informacion_shape/
+    ├── Zona_A/
+    │   ├── datos1_Zona_A.shp (+ .shx, .dbf, .prj)
+    │   └── datos2_Zona_A.shp
+    └── Zona_B/
+        └── datos1_Zona_B.shp
+```
+
+## Flujo de Trabajo
+
+1.  **Configuración de Datos:** Se ingresa la ruta (local o red). El script informa si encontró uno o múltiples archivos.
+2.  **Selección de Datos:** El usuario elige qué archivos filtrar (ej: `1`, `1,3`, `1-5` o `todos`).
+3.  **Configuración de Filtros:** Se ingresa la ruta de las zonas. El script valida cuáles son polígonos útiles.
+4.  **Selección de Zonas:** El usuario elige qué zonas aplicar como filtro.
+5.  **Procesamiento:**
+    - Reproyección automática a EPSG:4326.
+    - Spatial Join (`within`).
+    - Deduplicación.
+    - Exportación organizada.
 
 ## Ejecución
 
@@ -22,271 +60,23 @@ uv pip install -r requirements.txt
 uv run Proceso_conversion_GD/geospatial/filtro_espacial_geojson.py
 ```
 
-## Validación automática de tipo de geometría
-
-El script **solo usa archivos de tipo Polygon o MultiPolygon** como filtro. Al leer la carpeta de filtros:
-
-- Verifica el tipo de geometría de cada `.shp`
-- Usa solo los que son polígonos
-- Descarta automáticamente puntos, líneas y otros tipos
-- Muestra en consola cuáles se descartaron y por qué
+## Ejemplo de Consola
 
 ```
-   ✅ Se encontraron 2 polígono(s) filtro:
-   - calle_5_area_Espejo_Bf100.shp (Polygon)
-   - calle_7_area_Espejo_Bf100.shp (Polygon)
+--- SELECCIÓN DE ARCHIVOS DE DATOS ---
+  1. comparendos.shp (en 2023)
+  2. comparendos.shp (en 2024)
+  3. incidentes.shp (en consolidado)
 
-   ⚠️  Archivos descartados (no son polígonos):
-   - calle_5_linea.shp (LineString)
+Opciones:
+  • Escribe el número del archivo (ej: 1)
+  • Escribe 'todos' para procesar masivamente
+Selección > todos
+✅ Se seleccionaron TODOS los archivos (3).
 ```
 
-## Lógica de filtrado independiente
+## Notas Técnicas
 
-Si la carpeta de filtro contiene N archivos `.shp`, el script ejecuta N procesos de filtrado completos. Cada filtro genera su propio par de carpetas de salida.
-
-```
-Carpeta filtro/
-├── comuna_7.shp          → Filtro 1
-├── comuna_13.shp         → Filtro 2
-└── zona_centro.shp       → Filtro 3
-
-Resultado: 3 pares de carpetas × M archivos de datos = 3×M archivos filtrados
-```
-
-## Flujo del proceso
-
-```
-┌─────────────────────────────────────────────┐
-│  1. Solicitar carpeta con polígonos filtro  │
-│     - Opción de reusar filtro anterior      │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│  2. Seleccionar polígonos específicos       │
-│     - Permite elegir 1 o varios del folder  │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│  3. Solicitar carpeta con los .shp          │
-│     a filtrar y seleccionar:                │
-│     - todos (Enter)                         │
-│     - por número (1,3,5)                    │
-│     - por rango (1-4)                       │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│  4. Solicitar carpeta de salida             │
-│     - Opción de reusar salida anterior      │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│  5. Confirmar filtrado (s/n)                │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│  6. POR CADA polígono filtro:               │
-│     a. Cargar y reproyectar a WGS84        │
-│     b. Crear subcarpetas                    │
-│     c. Filtrar cada archivo de datos        │
-│     d. Deduplicar y exportar                │
-└──────────────────────┬──────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────┐
-│  7. Mostrar resumen y Menú Interactivo:     │
-│     1. Procesar otros datos (mismo filtro)  │
-│     2. Cambiar todo                         │
-│     3. Salir                                │
-└─────────────────────────────────────────────┘
-```
-
-## Nomenclatura de archivos de salida
-
-Los archivos generados incluyen el nombre del filtro para identificar su origen:
-
-```
-[nombre_dato]_filtrado_[nombre_filtro].shp
-[nombre_dato]_filtrado_[nombre_filtro].geojson
-```
-
-Ejemplo:
-- Dato: `comparendos_2023.shp`
-- Filtro: `comuna_7.shp`
-- Salida: `comparendos_2023_filtrado_comuna_7.shp`
-
-## Estructura de salida completa
-
-Con 2 filtros (`comuna_7.shp`, `comuna_13.shp`) y 3 archivos de datos:
-
-```
-[carpeta_salida]/
-├── shape_filtrado_comuna_7/
-│   ├── comparendos_2023_filtrado_comuna_7.shp (+ .shx, .dbf, .prj, .cpg)
-│   ├── accidentes_2024_filtrado_comuna_7.shp
-│   └── puntos_control_filtrado_comuna_7.shp
-├── geojson_filtrado_comuna_7/
-│   ├── comparendos_2023_filtrado_comuna_7.geojson
-│   ├── accidentes_2024_filtrado_comuna_7.geojson
-│   └── puntos_control_filtrado_comuna_7.geojson
-├── shape_filtrado_comuna_13/
-│   ├── comparendos_2023_filtrado_comuna_13.shp
-│   ├── accidentes_2024_filtrado_comuna_13.shp
-│   └── puntos_control_filtrado_comuna_13.shp
-├── geojson_filtrado_comuna_13/
-│   ├── comparendos_2023_filtrado_comuna_13.geojson
-│   ├── accidentes_2024_filtrado_comuna_13.geojson
-│   └── puntos_control_filtrado_comuna_13.geojson
-└── log_errores_filtro.txt (solo si hubo errores)
-```
-
-## Ejemplo de uso
-
-```
-======================================================================
-  FILTRO ESPACIAL POR POLÍGONO (INDEPENDIENTE POR FILTRO)
-  (SHP → SHP filtrado + GeoJSON filtrado)
-======================================================================
-
-📐 Ingresa la ruta de la carpeta con los polígonos filtro (.shp)
-   (ruta absoluta o relativa, ej: C:\Users\...\mi_carpeta)
-   Cada .shp de tipo Polígono se usará como filtro INDEPENDIENTE
-   > C:\...\Data_Steward\poligonos_filtro
-
-   ✅ Se encontraron 2 polígono(s) filtro:
-   - comuna_7.shp
-   - comuna_13.shp
-
-📂 Ingresa la ruta de la carpeta con los archivos .shp a filtrar
-   (ruta absoluta o relativa, ej: C:\Users\...\mi_carpeta)
-   > C:\...\Data_Steward\Observatorio_2026\shape_Observatorio_2026
-
-   Se encontraron 5 archivos .shp:
-
-   1. comparendos_2023.shp
-   2. accidentes_2024.shp
-   3. puntos_control.shp
-   4. homicidios_2023.shp
-   5. hurtos_2024.shp
-
-   Selecciona cuáles deseas filtrar:
-   • Escribe 'todos' o presiona Enter para usar todos
-   • Escribe los números separados por coma (ej: 1,3,5)
-   • Escribe un rango (ej: 1-4)
-   > 1-3
-
-   ✅ Archivos seleccionados (3):
-   - comparendos_2023.shp
-   - accidentes_2024.shp
-   - puntos_control.shp
-
-📂 Ingresa la ruta de la carpeta de salida
-   (ruta absoluta o relativa, se crearán subcarpetas por cada filtro)
-   (presiona Enter para usar la misma carpeta de los datos)
-   > C:\...\Data_Steward\resultados_filtro
-
-----------------------------------------------------------------------
-  RESUMEN DE OPERACIONES:
-  • Polígonos filtro:  2
-  • Archivos a filtrar: 3
-  • Total operaciones:  6
-----------------------------------------------------------------------
-
-¿Deseas continuar con el filtrado espacial? (s/n)
-   > s
-
-══════════════════════════════════════════════════════════════════════════
-Iniciando filtrado espacial...
-
-──────────────────────────────────────────────────────────────────────────
-  � FILTRO 1/2: comuna_7.shp
-──────────────────────────────────────────────────────────────────────────
-    ✅ Polígono cargado y reproyectado a WGS84
-    📁 SHP     → .../shape_filtrado_comuna_7/
-    📁 GeoJSON → .../geojson_filtrado_comuna_7/
-
-    📄 comparendos_2023.shp
-       📊 Entrada: 15420 | Filtrados: 4200
-       ✓ Guardado: comparendos_2023_filtrado_comuna_7
-
-    📄 accidentes_2024.shp
-       📊 Entrada: 3200 | Filtrados: 890 | Duplicados eliminados: 10
-       ✓ Guardado: accidentes_2024_filtrado_comuna_7
-
-──────────────────────────────────────────────────────────────────────────
-  🔷 FILTRO 2/2: comuna_13.shp
-──────────────────────────────────────────────────────────────────────────
-    ✅ Polígono cargado y reproyectado a WGS84
-    📁 SHP     → .../shape_filtrado_comuna_13/
-    📁 GeoJSON → .../geojson_filtrado_comuna_13/
-
-    📄 comparendos_2023.shp
-       📊 Entrada: 15420 | Filtrados: 5100
-       ✓ Guardado: comparendos_2023_filtrado_comuna_13
-
-======================================================================
-  RESUMEN DE FILTRADO ESPACIAL
-======================================================================
-  🔷 Polígonos filtro usados:          2
-  � Archivos de datos procesados:     3
-  📊 Total operaciones:                6
-  ✅ Exitosas:                          6
-  ❌ Con errores:                       0
-  📍 Total registros de entrada:        37240
-  📍 Total registros filtrados:         15800
-  🔄 Total duplicados eliminados:       10
-  🌐 CRS de salida:                    EPSG:4326 (WGS84)
-======================================================================
-```
-
-## Reproyección automática
-
-No importa el CRS de los archivos de entrada. El script:
-1. Detecta el CRS de cada archivo (filtro y datos)
-2. Reproyecta automáticamente a WGS84 (EPSG:4326)
-3. Los archivos de salida siempre quedan en EPSG:4326
-
-## Deduplicación
-
-Después del filtrado espacial, se eliminan registros donde todos los atributos y la geometría son idénticos.
-
-El reporte `log_errores_filtro.txt` incluye:
-- Listado de duplicados eliminados por archivo y filtro
-- Errores de procesamiento
-
-```
-REPORTE DE FILTRADO ESPACIAL
-======================================================================
-
-REGISTROS DUPLICADOS ELIMINADOS:
-----------------------------------------
-  comparendos_2023.shp (filtro: comuna_7): 50 duplicados eliminados
-  accidentes_2024.shp (filtro: comuna_13): 10 duplicados eliminados
-
-ERRORES:
-----------------------------------------
-  1. Sin registros dentro del polígono: puntos_control.shp (filtro: comuna_7)
-```
-
-## Manejo de errores
-
-El script NO se detiene ante errores. Si un archivo:
-- Está vacío
-- No tiene geometría válida
-- No tiene registros dentro del polígono
-
-Se registra en `log_errores_filtro.txt` y continúa con el siguiente.
-
-## Notas técnicas
-
-- El filtrado usa `gpd.sjoin()` con predicado `within`
-- Cada polígono filtro se disuelve en una sola geometría antes de filtrar
-- Solo se usan archivos de tipo Polygon/MultiPolygon como filtro (puntos y líneas se descartan automáticamente)
-- Todos los archivos se reproyectan a WGS84 (EPSG:4326) antes del filtrado
-- Los archivos de salida siempre están en EPSG:4326
-- Sobrescribe archivos existentes en las carpetas de salida
-- Los nombres incluyen referencia al filtro para trazabilidad
+- **Deduplicación:** Se genera un WKT de la geometría temporalmente para comparar registros de forma exacta.
+- **Normalización:** Si un archivo no tiene CRS definido, se asume EPSG:4326 por defecto, pero siempre se transforma a WGS84 antes de operar.
+- **Log de Errores:** En caso de fallos en archivos específicos, se genera un archivo `log_ejecucion.txt` en la raíz de salida.
