@@ -183,10 +183,10 @@ def crear_geodataframe_desde_wkt(df: pd.DataFrame, col_geom: str) -> gpd.GeoData
             crs_origen = "EPSG:3115"  # Colombia Oeste (Cali)
         else:
             crs_origen = "EPSG:3116"  # Colombia Bogotá (default)
-        print(f"    🌐 Coordenadas planas detectadas → CRS origen: {crs_origen}")
+        print(f"    INFO: Coordenadas planas detectadas -> CRS origen: {crs_origen}")
         gdf = gpd.GeoDataFrame(df_valido, geometry=list(geometrias), crs=crs_origen)
         gdf = gdf.to_crs(epsg=4326)
-        print(f"    🌐 Reproyectado a WGS84 (EPSG:4326)")
+        print(f"    INFO: Reproyectado a WGS84 (EPSG:4326)")
     else:
         # Coordenadas geográficas - ya es WGS84
         gdf = gpd.GeoDataFrame(df_valido, geometry=list(geometrias), crs="EPSG:4326")
@@ -262,7 +262,7 @@ def leer_archivo(ruta: Path) -> pd.DataFrame:
             if not dfs:
                 return pd.DataFrame()
             df = pd.concat(dfs, ignore_index=True)
-            print(f"    📑 Excel con {len(hojas)} hojas, concatenadas ({len(df)} registros total)")
+            print(f"    INFO: Excel con {len(hojas)} hojas, concatenadas ({len(df)} registros total)")
 
         return df
 
@@ -322,37 +322,37 @@ def crear_geodataframe(df: pd.DataFrame, col_lat: str, col_lon: str) -> gpd.GeoD
 def main():
     print("=" * 70)
     print("  CONVERSIÓN DE ARCHIVOS TABULARES A SHAPEFILE Y GEOJSON")
-    print("  (CSV, TXT, XLSX, XLS → SHP + GeoJSON)")
+    print("  (CSV, TXT, XLSX, XLS -> SHP + GeoJSON)")
     print("=" * 70)
 
     while True:
         # ---------------------------------------------------------------------
         # 1. Solicitar carpeta principal
         # ---------------------------------------------------------------------
-        print("\n📂 Ingresa la ruta de la carpeta principal (o 'salir' para terminar)")
+        print("\n[DIRECTORIO] Ingresa la ruta de la carpeta principal (o 'salir' para terminar)")
         print("   (puede ser ruta absoluta o relativa al directorio actual)")
         entrada = input("   > ").strip().strip('"').strip("'")
 
         if entrada.lower() in ("salir", "exit", "q"):
-            print("\n👋 ¡Hasta luego!")
+            print("\nINFO: Hasta luego!")
             return
 
         if not entrada:
-            print("\n❌ No ingresaste ninguna ruta.")
+            print("\nERROR: No ingresaste ninguna ruta.")
             continue
 
         ruta_principal = Path(entrada)
 
         if not ruta_principal.exists():
-            print(f"\n❌ La ruta no existe: {ruta_principal.resolve()}")
+            print(f"\nERROR: La ruta no existe: {ruta_principal.resolve()}")
             print(f"   Directorio actual: {Path.cwd()}")
             continue
 
         if not ruta_principal.is_dir():
-            print(f"\n❌ La ruta no es una carpeta: {ruta_principal.resolve()}")
+            print(f"\nERROR: La ruta no es una carpeta: {ruta_principal.resolve()}")
             continue
 
-        print(f"\n✅ Carpeta encontrada: {ruta_principal.resolve()}")
+        print(f"\nOK: Carpeta encontrada: {ruta_principal.resolve()}")
 
         # ---------------------------------------------------------------------
         # 2. Verificar archivos en carpeta principal o listar subcarpetas
@@ -361,7 +361,7 @@ def main():
         subcarpetas = listar_subcarpetas(ruta_principal)
 
         if not subcarpetas and not archivos_en_raiz:
-            print(f"\n❌ No se encontraron subcarpetas ni archivos válidos en: {ruta_principal.resolve()}")
+            print(f"\nERROR: No se encontraron subcarpetas ni archivos válidos en: {ruta_principal.resolve()}")
             continue
 
         # Bucle para seleccionar carpeta de trabajo
@@ -370,7 +370,7 @@ def main():
             archivos_en_raiz = buscar_archivos(ruta_principal)
             subcarpetas = listar_subcarpetas(ruta_principal)
 
-            print(f"\n📁 Contenido de '{ruta_principal.name}':\n")
+            print(f"\n[INFO] Contenido de '{ruta_principal.name}':\n")
 
             opciones = []
 
@@ -386,7 +386,7 @@ def main():
                 opciones.append(("sub", carpeta))
 
             if not opciones:
-                print(f"\n❌ No hay archivos ni subcarpetas disponibles.")
+                print(f"\nERROR: No hay archivos ni subcarpetas disponibles.")
                 break
 
             print(f"\n   Selecciona una opción (0={len(archivos_en_raiz)} archivos aquí, 1-{len(subcarpetas)} subcarpetas)")
@@ -394,7 +394,7 @@ def main():
             entrada_sub = input("   > ").strip().lower()
 
             if entrada_sub in ("salir", "exit", "q"):
-                print("\n👋 ¡Hasta luego!")
+                print("\nINFO: Hasta luego!")
                 return
 
             if entrada_sub in ("cambiar", "c"):
@@ -405,15 +405,15 @@ def main():
                 if seleccion == 0 and archivos_en_raiz:
                     carpeta_trabajo = ruta_principal
                 elif seleccion < 1 or seleccion > len(subcarpetas):
-                    print(f"\n❌ Selección fuera de rango (0-{len(subcarpetas)}).")
+                    print(f"\nERROR: Selección fuera de rango (0-{len(subcarpetas)}).")
                     continue
                 else:
                     carpeta_trabajo = subcarpetas[seleccion - 1]
             except ValueError:
-                print("\n❌ Debes ingresar un número válido.")
+                print("\nERROR: Debes ingresar un número válido.")
                 continue
 
-            print(f"\n✅ Carpeta seleccionada: {carpeta_trabajo.name}")
+            print(f"\nOK: Carpeta seleccionada: {carpeta_trabajo.name}")
 
             # -----------------------------------------------------------------
             # 3. Detectar archivos válidos
@@ -421,11 +421,11 @@ def main():
             archivos = buscar_archivos(carpeta_trabajo)
 
             if not archivos:
-                print(f"\n❌ No se encontraron archivos válidos (.csv, .txt, .xlsx, .xls)")
+                print(f"\nERROR: No se encontraron archivos válidos (.csv, .txt, .xlsx, .xls)")
                 print(f"   en: {carpeta_trabajo.resolve()}")
                 continue
 
-            print(f"\n📄 Se encontraron {len(archivos)} archivos para procesar:")
+            print(f"\n[INFO] Se encontraron {len(archivos)} archivos para procesar:")
             for archivo in archivos:
                 print(f"   - {archivo.name} ({archivo.suffix})")
 
@@ -435,7 +435,7 @@ def main():
             print("\n¿Deseas continuar con la conversión? (s/n)")
             confirm = input("   > ").strip().lower()
             if confirm not in ("s", "si", "sí", "y", "yes"):
-                print("\n⚠️  Conversión cancelada.")
+                print("\nADVERTENCIA: Conversión cancelada.")
                 continue
 
             # -----------------------------------------------------------------
@@ -448,9 +448,9 @@ def main():
             carpeta_shape.mkdir(parents=True, exist_ok=True)
             carpeta_geojson.mkdir(parents=True, exist_ok=True)
 
-            print(f"\n📁 Carpetas de salida creadas:")
-            print(f"   SHP    → {carpeta_shape.resolve()}")
-            print(f"   GeoJSON → {carpeta_geojson.resolve()}")
+            print(f"\n[INFO] Carpetas de salida creadas:")
+            print(f"   SHP    -> {carpeta_shape.resolve()}")
+            print(f"   GeoJSON -> {carpeta_geojson.resolve()}")
 
             # -----------------------------------------------------------------
             # 6. Procesar archivos
@@ -466,7 +466,7 @@ def main():
             total_registros = 0
 
             for archivo in archivos:
-                print(f"  📄 Procesando: {archivo.name}")
+                print(f"  [INFO] Procesando: {archivo.name}")
 
                 try:
                     # Leer archivo
@@ -474,7 +474,7 @@ def main():
 
                     if df.empty:
                         msg = f"Archivo vacío: {archivo.name}"
-                        print(f"    ⚠️  {msg}")
+                        print(f"    ADVERTENCIA: {msg}")
                         log_errores.append(msg)
                         errores += 1
                         continue
@@ -496,18 +496,18 @@ def main():
                     if cols != cols_nuevos:
                         df.columns = cols_nuevos
                         renombradas = sum(1 for a, b in zip(cols, cols_nuevos) if a != b)
-                        print(f"    ⚠️  {renombradas} columna(s) con nombre duplicado renombradas")
+                        print(f"    ADVERTENCIA: {renombradas} columna(s) con nombre duplicado renombradas")
 
                     df = df.drop_duplicates()
                     unicos = len(df)
                     duplicados = total_leidos - unicos
 
                     if duplicados > 0:
-                        print(f"    📊 Registros leídos: {total_leidos} | Únicos: {unicos} | Duplicados eliminados: {duplicados}")
-                        reporte_duplicados.append(f"{archivo.name}: {duplicados} duplicados eliminados (de {total_leidos} → {unicos} únicos)")
+                        print(f"    INFO: Registros leídos: {total_leidos} | Únicos: {unicos} | Duplicados eliminados: {duplicados}")
+                        reporte_duplicados.append(f"{archivo.name}: {duplicados} duplicados eliminados (de {total_leidos} -> {unicos} únicos)")
                         any_duplicados = True
                     else:
-                        print(f"    📊 Registros leídos: {total_leidos} (sin duplicados)")
+                        print(f"    INFO: Registros leídos: {total_leidos} (sin duplicados)")
 
                     # Detectar tipo de coordenadas: WKT o columnas lat/lon
                     col_geom = detectar_columna_geometry(df)
@@ -523,7 +523,7 @@ def main():
                         if col_lat is None or col_lon is None:
                             msg = (f"No se detectaron coordenadas (ni WKT ni lat/lon): {archivo.name} "
                                    f"(columnas disponibles: {list(df.columns)})")
-                            print(f"    ⚠️  {msg}")
+                            print(f"    ADVERTENCIA: {msg}")
                             log_errores.append(msg)
                             errores += 1
                             continue
@@ -546,7 +546,7 @@ def main():
                             renombrar_base[col] = col_limpio
                     if renombrar_base:
                         gdf = gdf.rename(columns=renombrar_base)
-                        print(f"    ⚠️  {len(renombrar_base)} columna(s) con espacios/caracteres especiales limpiadas")
+                        print(f"    ADVERTENCIA: {len(renombrar_base)} columna(s) con espacios/caracteres especiales limpiadas")
 
                     # Truncar nombres a 10 chars con unicidad garantizada (requisito Shapefile)
                     cols_nuevos = []
@@ -573,7 +573,7 @@ def main():
                     max_cols = 255
                     cols_sin_geom = [c for c in gdf.columns if c != "geometry"]
                     if len(cols_sin_geom) > max_cols:
-                        print(f"    ⚠️  Demasiadas columnas ({len(cols_sin_geom)}), limitando a {max_cols}")
+                        print(f"    ADVERTENCIA: Demasiadas columnas ({len(cols_sin_geom)}), limitando a {max_cols}")
                         gdf = gdf[cols_sin_geom[:max_cols] + ["geometry"]]
 
                     # Verificar que no haya columnas duplicadas después de limpiar
@@ -598,14 +598,14 @@ def main():
                         if col == "geometry":
                             continue
                         gdf[col] = gdf[col].fillna("").astype(str)
-                        # Reemplazar 'nan' y 'None' por vacío
+                        # Reemplazar 'nan' and 'None' por vacío
                         gdf[col] = gdf[col].replace({"nan": "", "None": "", "NaT": ""})
                         # Eliminar caracteres no-ASCII que pueden romper el .dbf
                         gdf[col] = gdf[col].apply(lambda x: x.encode("ascii", errors="replace").decode("ascii"))
                         # Truncar a 254 caracteres (límite Shapefile)
                         gdf[col] = gdf[col].str[:254]
 
-                    print(f"    📋 Columnas en salida: {len(gdf.columns) - 1} atributos + geometry")
+                    print(f"    INFO: Columnas en salida: {len(gdf.columns) - 1} atributos + geometry")
 
                     # Exportar a Shapefile (eliminar existentes primero)
                     nombre_salida = archivo.stem
@@ -630,12 +630,12 @@ def main():
                         ruta_geojson.unlink()
                     gdf.to_file(ruta_geojson, driver="GeoJSON")
 
-                    print(f"    ✓ Convertido exitosamente ({registros} registros)")
+                    print(f"    OK: Convertido exitosamente ({registros} registros)")
                     exitosos += 1
 
                 except Exception as e:
                     msg = f"Error en {archivo.name}: {str(e)}"
-                    print(f"    ✗ {msg}")
+                    print(f"    ERROR: {msg}")
                     log_errores.append(msg)
                     errores += 1
 
@@ -660,7 +660,7 @@ def main():
                         f.write("-" * 40 + "\n")
                         for i, error in enumerate(log_errores, 1):
                             f.write(f"  {i}. {error}\n")
-                print(f"\n📝 Reporte guardado en: {ruta_log.name}")
+                print(f"\n[INFO] Reporte guardado en: {ruta_log.name}")
 
             # -----------------------------------------------------------------
             # 8. Resumen final
@@ -668,12 +668,12 @@ def main():
             print("\n" + "=" * 70)
             print("  RESUMEN DE CONVERSIÓN")
             print("=" * 70)
-            print(f"  📊 Total de archivos encontrados:  {len(archivos)}")
-            print(f"  ✅ Convertidos exitosamente:        {exitosos}")
-            print(f"  ❌ Archivos con errores:            {errores}")
-            print(f"  📍 Total de registros procesados:   {total_registros}")
-            print(f"  📁 Shapefiles en:  {carpeta_shape.resolve()}")
-            print(f"  📁 GeoJSON en:     {carpeta_geojson.resolve()}")
+            print(f"  INFO: Total de archivos encontrados:  {len(archivos)}")
+            print(f"  OK: Convertidos exitosamente:        {exitosos}")
+            print(f"  ERROR: Archivos con errores:            {errores}")
+            print(f"  INFO: Total de registros procesados:   {total_registros}")
+            print(f"  INFO: Shapefiles en:  {carpeta_shape.resolve()}")
+            print(f"  INFO: GeoJSON en:     {carpeta_geojson.resolve()}")
             print("=" * 70)
 
             # Preguntar si desea continuar
@@ -685,7 +685,7 @@ def main():
             opcion = input("   > ").strip()
 
             if opcion == "3" or opcion.lower() in ("salir", "exit", "q"):
-                print("\n👋 ¡Hasta luego!")
+                print("\nINFO: Hasta luego!")
                 return
             elif opcion == "2" or opcion.lower() in ("cambiar", "c"):
                 break  # Vuelve al bucle externo

@@ -125,14 +125,14 @@ def seleccionar_archivos_interactivo(lista_archivos: list, titulo: str) -> list:
         print(f"  {i}. {archivo.name} (en {archivo.parent.name})")
 
     print(f"\nOpciones:")
+    print(f"  • Escribe 0 para procesar TODOS los archivos")
     print(f"  • Escribe el número del archivo (ej: 1)")
-    print(f"  • Escribe 'todos' para procesar masivamente")
     print(f"  • Escribe varios números (ej: 1,3,5) o rango (1-4)")
     
     seleccion = input("Selección > ").strip().lower()
 
-    if seleccion in ("todos", "t", "all") or not seleccion:
-        print(f"✅ Se seleccionaron TODOS los archivos ({len(lista_archivos)}).")
+    if seleccion == "0" or not seleccion:
+        print(f"INFO: Se seleccionaron TODOS los archivos ({len(lista_archivos)}).")
         return lista_archivos
 
     indices_seleccionados = set()
@@ -148,13 +148,13 @@ def seleccionar_archivos_interactivo(lista_archivos: list, titulo: str) -> list:
 
         validos = [lista_archivos[i - 1] for i in indices_seleccionados if 1 <= i <= len(lista_archivos)]
         if not validos:
-            print("⚠️ Selección no válida. Se usarán todos por defecto.")
+            print("ADVERTENCIA: Selección no válida. Se usarán todos por defecto.")
             return lista_archivos
         
-        print(f"✅ Seleccionados: {len(validos)} archivo(s).")
+        print(f"OK: Seleccionados: {len(validos)} archivo(s).")
         return validos
     except (ValueError, IndexError):
-        print("⚠️ Error en formato. Se usarán todos por defecto.")
+        print("ADVERTENCIA: Error en formato. Se usarán todos por defecto.")
         return lista_archivos
 
 
@@ -170,14 +170,14 @@ def main():
     
     path_datos = Path(ruta_input)
     if not path_datos.exists() or not path_datos.is_dir():
-        print(f"❌ Error: La ruta no existe o no es un directorio: {ruta_input}")
+        print(f"ERROR: La ruta no existe o no es un directorio: {ruta_input}")
         return
 
-    print(f"\n🔍 Escaneando archivos en: {path_datos.resolve()} ...")
+    print(f"\nINFO: Escaneando archivos en: {path_datos.resolve()} ...")
     archivos_datos_candidatos = buscar_shapefiles_recursivo(path_datos)
 
     if not archivos_datos_candidatos:
-        print("❌ No se encontraron archivos Shapefile (.shp) en la ruta proporcionada.")
+        print("ERROR: No se encontraron archivos Shapefile (.shp) en la ruta proporcionada.")
         return
 
     if len(archivos_datos_candidatos) == 1:
@@ -198,7 +198,7 @@ def main():
     
     path_filtros = Path(ruta_filtro)
     if not path_filtros.exists() or not path_filtros.is_dir():
-        print(f"ERROR en ruta de filtros.")
+        print(f"ERROR: Problema en ruta de filtros.")
         return
 
     filtros_candidatos, descartados = buscar_shapefiles_poligonos(path_filtros)
@@ -285,24 +285,24 @@ def main():
                     total_errores += 1
 
         except Exception as e:
-            print(f"ERROR critico cargando zona {nombre_zona}: {e}")
+            print(f"ERROR: Critico cargando zona {nombre_zona}: {e}")
             total_errores += len(archivos_datos)
 
     # Resumen Final
     print("\n" + "=" * 80)
     print("RESUMEN DE EJECUCIÓN")
     print("-" * 80)
-    print(f"  ✅ Procesos exitosos: {total_exitos}")
-    print(f"  ❌ Procesos con error: {total_errores}")
-    print(f"  📂 Salida principal:  {path_salida.resolve()}")
-    print(f"  📂 GeoJSONs:          {path_geojson_root.name}/")
-    print(f"  📂 Shapefiles:        {path_shape_root.name}/[Zona]/")
+    print(f"  OK: Procesos exitosos: {total_exitos}")
+    print(f"  ERROR: Procesos con error: {total_errores}")
+    print(f"  INFO: Salida principal:  {path_salida.resolve()}")
+    print(f"  INFO: GeoJSONs:          {path_geojson_root.name}/")
+    print(f"  INFO: Shapefiles:        {path_shape_root.name}/[Zona]/")
     print("=" * 80)
 
     if log_reporte:
         with open(path_salida / "log_ejecucion.txt", "w", encoding="utf-8") as f:
             f.write("\n".join(log_reporte))
-        print(f"⚠️ Se generó un log de errores en: log_ejecucion.txt")
+        print(f"ADVERTENCIA: Se generó un log de errores en: log_ejecucion.txt")
 
 
 if __name__ == "__main__":
