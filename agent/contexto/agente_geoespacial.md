@@ -163,15 +163,80 @@ uv run geospatial/filtro_espacial_geojson.py
 uv run geospatial/unificar_ipm_variables.py
 ```
 
+### 5. filtro_territorios_itt.py
+
+**Propósito:** Pipeline AUTOMÁTICO (sin interacción por consola) que filtra toda la
+data del ITT por cada polígono de territorio de estudio y organiza las salidas
+`.geojson` dentro de una estructura fija de 6 dimensiones por cada zona.
+
+**Cuándo usar:**
+- Cuando necesitas segmentar varias fuentes (CSV/XLSX/SHP) por cada territorio de
+  estudio del ITT de forma reproducible y en lote.
+- Cuando la salida debe quedar organizada por dimensión temática dentro de cada zona.
+
+**Diferencia clave con `filtro_espacial_geojson.py`:**
+- NO es interactivo: todas las rutas y el mapeo de fuentes están en la sección
+  CONFIGURACIÓN del script (reproducible, apto para nube/lote).
+- Acepta fuentes tabulares (CSV/XLSX) además de `.shp`, construyendo la geometría
+  a partir de columnas de coordenadas o WKT (reutiliza la lógica de
+  `csv_xlx_to_shape.py`).
+
+**Rutas configuradas (editar en el script si cambian):**
+- Polígonos: `Data_Steward/ITT_geo/geo_poligonos_territorio` (14 territorios).
+- Datos:     `Data_Steward/ITT_geo/data_general/data_2025_2026`.
+- Salida:    `Data_Steward/ITT_geo/filtro_itt_territorios`.
+
+**Estructura de salida (una por territorio, 6 dimensiones SIEMPRE creadas):**
+```
+filtro_itt_territorios/
+└── <Territorio>/
+    ├── 1_Dimension_Seguridad/            homicidios, hurtos, comparendos
+    ├── 2_Dimension_Cohesion_Social/      VIF (+ VBG pendiente)
+    ├── 3_Dimension_Movilidad/            siniestros
+    ├── 4_Dimension_Desarrollo_Economico/ registro mercantil (pendiente de carga)
+    ├── 5_Dimension_Entorno_Urbano/       rásters NDVI/censo arbóreo (placeholder)
+    └── 6_Dimension_Educacion/            fuera de alcance (placeholder)
+```
+
+**Mapeo fuente → dimensión** (por patrón en el nombre del archivo):
+- Seguridad: `homicidio`, `hurto`, `comparendo`
+- Cohesión Social: `violencia_intrafamiliar`, `vif`, `vbg`
+- Movilidad: `siniestro`
+- Desarrollo Económico: `registro_mercantil`, `mercantil`
+
+**Pendientes conocidos:**
+- Fuentes VBG (`DATIC_vbg_2025.xlsx`, `DATIC_vbg_2026.csv`) no tienen coordenadas,
+  solo barrio/vereda → requieren geocodificación. Quedan listadas en el log.
+- Dimensión 4 (registro mercantil) está en subcarpeta `Camara_de_Comercio/`; se
+  integrará activando `PROCESAR_RECURSIVO=True` o agregando su ruta.
+- Dimensiones 5 (rásters) y 6 (educación): placeholder con `README.txt`.
+
+**Ejecución (desde Proceso_conversion_GD/):**
+```bash
+uv run geospatial/filtro_territorios_itt.py
+```
+
 ## Sistema de referencia
 
-Todos los archivos de salida se generan en **WGS84 (EPSG:4326)**. El sistema maneja automáticamente:
+**REGLA DE COORDENADAS DEL PROYECTO (SIEMPRE aplicar en cualquier flujo):**
 
-- Coordenadas geográficas (lat/lon) → se asigna WGS84 directamente
+1. **Validar** las coordenadas de la fuente: descartar nulos, textos ("NO APLICA"),
+   valores corruptos y puntos fuera del área de estudio.
+2. **Detectar el SRC/CRS** de origen (geográfico WGS84 vs plano MAGNA-SIRGAS).
+3. **Reproyectar a WGS84 (EPSG:4326)** cuando el origen no lo esté.
+
+Todos los archivos de salida se generan en **WGS84 (EPSG:4326)**. El sistema maneja:
+
+- Coordenadas geográficas (lat/lon) → se asigna WGS84 directamente.
+- **Orientación lat/lon auto-detectada por rango** (no por nombre de columna): en
+  Cali la latitud cae en ~2.8–4.2 y la longitud en ~-77.2 a -75.9. Si las columnas
+  `x`/`y`/`lat`/`lon` vienen invertidas, se corrige automáticamente.
 - Coordenadas planas MAGNA-SIRGAS → se detecta el origen y se reproyecta:
   - EPSG:3115 (Colombia Oeste / Cali): X ~1.000.000-1.200.000
   - EPSG:3116 (Colombia Bogotá): otras coordenadas planas
-- Geometría WKT en cualquier CRS → se detecta y reproyecta
+- Geometría WKT en cualquier CRS → se detecta y reproyecta.
+- **Bounding box de validación (Cali/Valle):** lat 2.8–4.2, lon -77.2 a -75.9. Los
+  registros fuera de este rectángulo se descartan y se contabilizan en el reporte.
 
 ## Reglas de calidad de datos
 
@@ -192,7 +257,8 @@ Proceso_conversion_GD/
 ├── geospatial/            ← Scripts de procesamiento
 │   ├── csv_xlx_to_shape.py
 │   ├── shp_to_geojson.py
-│   └── filtro_espacial_geojson.py
+│   ├── filtro_espacial_geojson.py
+│   └── filtro_territorios_itt.py   ← pipeline automático ITT por dimensión
 ├── agent/
 │   └── contexto/          ← Este archivo y contexto adicional
 ├── notebooks/             ← Análisis exploratorio
@@ -201,6 +267,8 @@ Proceso_conversion_GD/
 ```
 
 ## Flujo de trabajo típico
+
+### A) Flujo manual / exploratorio (interactivo)
 
 ```
 1. Recibir datos tabulares (CSV/XLSX)
@@ -216,6 +284,24 @@ Proceso_conversion_GD/
    filtrados por polígono, listos para análisis
 ```
 
+### B) Flujo automático ITT por territorio (reproducible)
+
+```
+1. Configurar rutas en filtro_territorios_itt.py (polígonos, datos, salida)
+       │
+       ▼
+2. Para cada fuente: leer → VALIDAR coords → detectar SRC → reproyectar a WGS84
+       │
+       ▼
+3. Para cada territorio: recorte espacial (within) → deduplicar → validar
+       │
+       ▼
+4. Exportar .geojson en <Territorio>/<N_Dimension_*>/ (6 dimensiones fijas)
+       │
+       ▼
+5. Reportes: _reporte_global.md + _sin_coordenadas.txt (coords inválidas/sin coords)
+```
+
 ## Convenciones de nombres
 
 | Elemento | Convención | Ejemplo |
@@ -224,6 +310,9 @@ Proceso_conversion_GD/
 | Carpeta de GeoJSON | `geojson_[nombre]` | `geojson_Observatorio_2026` |
 | Archivo filtrado | `[nombre]_filtrado_[filtro]` | `comparendos_filtrado_comuna_7` |
 | Log de errores | `log_errores.txt` | — |
+| Carpeta por territorio (ITT) | `<Territorio>/` | `poligono_Oriente/` |
+| Subcarpeta de dimensión (ITT) | `N_Dimension_[Tema]` | `1_Dimension_Seguridad` |
+| GeoJSON filtrado (ITT) | `<fuente>.geojson` | `DATIC_homicidios_2023_2026T1.geojson` |
 
 ## Dependencias
 

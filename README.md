@@ -90,7 +90,44 @@ Consolida múltiples pestañas de un archivo Excel de IPM en una única tabla un
 uv run Proceso_conversion_GD/geospatial/unificar_ipm_variables.py
 ```
 
-**Estructura de salida:**
+### 5. `filtro_territorios_itt.py` — Filtrado automático ITT por territorio
+
+Pipeline **automático** (sin interacción) que filtra toda la data del ITT por cada
+polígono de territorio de estudio y la organiza en una estructura fija de 6
+dimensiones temáticas por cada zona. Combina la detección de coordenadas de
+`csv_xlx_to_shape.py` con el recorte espacial de `filtro_espacial_geojson.py`.
+
+**Características:**
+- Sin `input()`: rutas y mapeo de fuentes parametrizados en el script (reproducible)
+- Acepta CSV, XLSX, XLS y SHP como fuente de datos
+- Regla de coordenadas: valida → detecta SRC → reproyecta a WGS84 (EPSG:4326)
+- Auto-detección de orientación lat/lon por rango (corrige columnas invertidas)
+- Descarta coordenadas corruptas o fuera del área de Cali/Valle (con reporte)
+- Deduplicación por atributos + geometría
+- Crea SIEMPRE las 6 dimensiones por territorio (estructura predecible)
+- Reportes: `_reporte_global.md` y `_sin_coordenadas.txt`
+
+```bash
+uv run Proceso_conversion_GD/geospatial/filtro_territorios_itt.py
+```
+
+**Estructura de salida (una por territorio):**
+```
+filtro_itt_territorios/
+└── <Territorio>/
+    ├── 1_Dimension_Seguridad/            homicidios, hurtos, comparendos
+    ├── 2_Dimension_Cohesion_Social/      VIF (+ VBG pendiente)
+    ├── 3_Dimension_Movilidad/            siniestros
+    ├── 4_Dimension_Desarrollo_Economico/ registro mercantil (pendiente)
+    ├── 5_Dimension_Entorno_Urbano/       rásters (placeholder)
+    └── 6_Dimension_Educacion/            fuera de alcance (placeholder)
+```
+
+> **Nota sobre `filtro_espacial_geojson.py`:** sigue disponible para el flujo
+> manual/interactivo y para recortar únicamente `.shp`. Para el flujo ITT
+> automático y multi-formato usa `filtro_territorios_itt.py`.
+
+**Estructura de salida de `filtro_espacial_geojson.py`:**
 ```
 [salida]/
 ├── shape_filtrado_[nombre_filtro]/
