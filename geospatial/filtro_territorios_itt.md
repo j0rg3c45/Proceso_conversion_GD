@@ -30,6 +30,14 @@ garantiza reproducibilidad y permite ejecutarlo en lote o en la nube.
    fuera del área y contabiliza los descartes en el reporte.
 6. **Deduplicación** por atributos + geometría.
 7. **Estructura fija de 6 dimensiones** creada SIEMPRE en cada territorio.
+8. **Predicado espacial según geometría:** puntos → `within`; líneas/polígonos →
+   `intersects` (una vía que cruza el borde del territorio se incluye).
+9. **Saneamiento de atributos** antes de exportar: columnas de tipo `object` con
+   tipos mixtos u objetos no serializables (p.ej. `datetime.time`) se pasan a
+   texto, evitando fallos del driver GeoJSON.
+10. **Procesamiento fuente por fuente:** cada archivo se lee una vez, se filtra
+    contra los 14 territorios y se libera de memoria antes del siguiente. Permite
+    manejar fuentes de cientos de miles de registros sin agotar memoria.
 
 ## Configuración (editar en el script)
 
@@ -38,9 +46,23 @@ garantiza reproducibilidad y permite ejecutarlo en lote o en la nube.
 | `RUTA_POLIGONOS` | Carpeta con los `.shp` de territorio (cada `.shp` = una zona) |
 | `RUTA_DATOS` | Carpeta raíz con la data a filtrar |
 | `RUTA_SALIDA` | Carpeta de salida (una subcarpeta por territorio) |
-| `REGLAS_DIMENSION` | Mapeo patrón-de-nombre → dimensión |
+| `REGLAS_DIMENSION` | Mapeo patrón-de-nombre → dimensión (archivos de la raíz) |
+| `FUENTES_EXPLICITAS` | Lista `(ruta_relativa, dimensión)` de fuentes en subcarpetas |
 | `PROCESAR_RECURSIVO` | `False` = solo archivos de la raíz; `True` = incluye subcarpetas |
 | `CALI_LAT_MIN/MAX`, `CALI_LON_MIN/MAX` | Bounding box de validación de coords |
+
+### Fuentes en subcarpetas (`FUENTES_EXPLICITAS`)
+
+Para evitar un barrido ciego que lea decenas de archivos sin coordenadas, las
+fuentes anidadas se declaran una por una. Actualmente:
+
+| Fuente | Dimensión | Geometría |
+|--------|-----------|-----------|
+| `Camara_de_Comercio/camara_comercio_geocodificado_13102026.csv` | 4 Desarrollo Económico | Point |
+| `Observatorio_de_Infraestructura/2025_Consolidado.shp` | 5 Entorno Urbano | LineString (EPSG:6249 → WGS84) |
+| `Observatorio_de_Infraestructura/2026_Consolidado_proyect.shp` | 5 Entorno Urbano | LineString |
+| `Observatorio_de_Infraestructura/2024/Infraestructura_2024.shp` | 5 Entorno Urbano | LineString |
+| `Educacion/.../Información geográfica sedes.shp` | 6 Educación | Point |
 
 ### Rutas actuales
 
@@ -77,14 +99,18 @@ filtro_itt_territorios/
 ## Flujo interno
 
 ```
-1. Cargar los polígonos de territorio (.shp) de RUTA_POLIGONOS.
-2. Por cada fuente de datos:
-     leer → VALIDAR coordenadas → detectar SRC → reproyectar a WGS84.
-3. Por cada territorio:
-     crear las 6 dimensiones → recorte espacial (within) → deduplicar →
-     exportar .geojson en la subcarpeta de dimensión que corresponde.
-4. Generar _reporte_global.md y _sin_coordenadas.txt.
+1. Preparar territorios: cargar polígonos (14) y crear la estructura de 6
+   dimensiones en cada zona.
+2. Por cada fuente de datos (una lectura, luego se libera):
+     leer → VALIDAR coordenadas → detectar SRC → reproyectar a WGS84 →
+     por cada territorio: recorte espacial (within/intersects según geometría) →
+     deduplicar → sanear atributos → exportar .geojson en su dimensión.
+3. Generar _reporte_global.md y _sin_coordenadas.txt.
 ```
+
+El orden "fuente externa, territorio interno" mantiene bajo el pico de memoria:
+nunca se retienen todas las fuentes a la vez (relevante con fuentes de 200k+
+registros como la cámara de comercio).
 
 ## Ejecución
 
@@ -92,17 +118,25 @@ filtro_itt_territorios/
 uv run Proceso_conversion_GD/geospatial/filtro_territorios_itt.py
 ```
 
+## Estado por dimensión
+
+- **1 Seguridad, 2 Cohesión Social, 3 Movilidad:** operativas (CSV/XLSX de DATIC y
+  siniestros).
+- **4 Desarrollo Económico:** operativa con `camara_comercio_geocodificado`.
+- **5 Entorno Urbano:** operativa con las obras de infraestructura (LineString,
+  predicado `intersects`). Los rásters NDVI / censo arbóreo siguen pendientes
+  (requieren recorte raster con `rasterio`/`gdalwarp`, no vectorial).
+- **6 Educación:** operativa con las sedes educativas (Point). Si un territorio no
+  contiene sedes dentro del polígono, no se genera archivo para esa zona.
+
 ## Pendientes conocidos
 
-- **Fuentes VBG** (`DATIC_vbg_2025.xlsx`, `DATIC_vbg_2026.csv`): no tienen
-  coordenadas, solo barrio/vereda → requieren geocodificación. Quedan listadas en
+- **Fuentes VBG** (`DATIC_vbg_2025.xlsx`, `DATIC_vbg_2026.csv`) y
+  `BD Comparendos Abril - Junio 2026.xlsx`: no tienen coordenadas, solo
+  barrio/dirección → requieren geocodificación. Quedan listadas en
   `_sin_coordenadas.txt`.
-- **Dimensión 4 (registro mercantil):** está en la subcarpeta
-  `Camara_de_Comercio/`; se integra activando `PROCESAR_RECURSIVO=True` o
-  agregando su ruta a la configuración.
-- **Dimensión 5 (rásters NDVI / censo arbóreo):** requiere recorte raster
-  (`rasterio`/`gdalwarp`), no vectorial. Queda como placeholder con `README.txt`.
-- **Dimensión 6 (educación):** fuera de alcance en este repositorio.
+- **Dimensión 5 (rásters NDVI / censo arbóreo):** pendiente de un flujo de recorte
+  raster aparte.
 
 ## Notas técnicas
 

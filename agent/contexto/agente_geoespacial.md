@@ -193,23 +193,40 @@ filtro_itt_territorios/
     ├── 1_Dimension_Seguridad/            homicidios, hurtos, comparendos
     ├── 2_Dimension_Cohesion_Social/      VIF (+ VBG pendiente)
     ├── 3_Dimension_Movilidad/            siniestros
-    ├── 4_Dimension_Desarrollo_Economico/ registro mercantil (pendiente de carga)
-    ├── 5_Dimension_Entorno_Urbano/       rásters NDVI/censo arbóreo (placeholder)
-    └── 6_Dimension_Educacion/            fuera de alcance (placeholder)
+    ├── 4_Dimension_Desarrollo_Economico/ camara de comercio geocodificada
+    ├── 5_Dimension_Entorno_Urbano/       obras de infraestructura (LineString)
+    └── 6_Dimension_Educacion/            sedes educativas (Point)
 ```
 
-**Mapeo fuente → dimensión** (por patrón en el nombre del archivo):
-- Seguridad: `homicidio`, `hurto`, `comparendo`
-- Cohesión Social: `violencia_intrafamiliar`, `vif`, `vbg`
-- Movilidad: `siniestro`
-- Desarrollo Económico: `registro_mercantil`, `mercantil`
+**Mapeo fuente → dimensión:**
+- Archivos de la raíz (por patrón de nombre, `REGLAS_DIMENSION`):
+  - Seguridad: `homicidio`, `hurto`, `comparendo`
+  - Cohesión Social: `violencia_intrafamiliar`, `vif`, `vbg`
+  - Movilidad: `siniestro`
+  - Desarrollo Económico: `registro_mercantil`, `mercantil`
+- Fuentes en subcarpetas (declaradas en `FUENTES_EXPLICITAS`, ruta → dimensión):
+  - Dim 4: `Camara_de_Comercio/camara_comercio_geocodificado_13102026.csv`
+  - Dim 5: 3 SHP de `Observatorio_de_Infraestructura` (uno en EPSG:6249 → WGS84)
+  - Dim 6: `Educacion/.../Información geográfica sedes.shp`
+
+**Predicado espacial por geometría:** puntos → `within`; líneas/polígonos →
+`intersects` (una vía que cruza el borde del territorio se incluye).
+
+**Memoria:** se procesa fuente por fuente (lee → filtra 14 territorios → libera),
+para soportar fuentes de cientos de miles de registros (cámara de comercio ~231k).
+
+**Saneamiento:** antes de exportar, las columnas `object` con tipos mixtos u
+objetos no serializables (`datetime.time`, etc.) se convierten a texto para evitar
+fallos del driver GeoJSON.
 
 **Pendientes conocidos:**
-- Fuentes VBG (`DATIC_vbg_2025.xlsx`, `DATIC_vbg_2026.csv`) no tienen coordenadas,
-  solo barrio/vereda → requieren geocodificación. Quedan listadas en el log.
-- Dimensión 4 (registro mercantil) está en subcarpeta `Camara_de_Comercio/`; se
-  integrará activando `PROCESAR_RECURSIVO=True` o agregando su ruta.
-- Dimensiones 5 (rásters) y 6 (educación): placeholder con `README.txt`.
+- Fuentes VBG (`DATIC_vbg_2025.xlsx`, `DATIC_vbg_2026.csv`) y
+  `BD Comparendos Abril - Junio 2026.xlsx` no tienen coordenadas, solo
+  barrio/dirección → requieren geocodificación. Quedan listadas en el log.
+- Dimensión 5: los rásters NDVI / censo arbóreo requieren un flujo de recorte
+  raster aparte (lo vectorial ya está cubierto con las obras de infraestructura).
+- Si un territorio no contiene registros de una fuente, no se genera archivo para
+  esa combinación (p.ej. sedes educativas solo en los territorios que las tienen).
 
 **Ejecución (desde Proceso_conversion_GD/):**
 ```bash
@@ -293,7 +310,7 @@ Proceso_conversion_GD/
 2. Para cada fuente: leer → VALIDAR coords → detectar SRC → reproyectar a WGS84
        │
        ▼
-3. Para cada territorio: recorte espacial (within) → deduplicar → validar
+3. Por cada territorio: recorte espacial (within puntos / intersects líneas) → deduplicar → sanear
        │
        ▼
 4. Exportar .geojson en <Territorio>/<N_Dimension_*>/ (6 dimensiones fijas)

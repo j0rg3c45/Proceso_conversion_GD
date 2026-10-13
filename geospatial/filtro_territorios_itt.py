@@ -89,14 +89,14 @@ DIMENSIONES = [
     "6_Dimension_Educacion",
 ]
 
-# Dimensiones que por ahora quedan como placeholder (no se procesan aqui).
-DIMENSIONES_PENDIENTES = {
-    "5_Dimension_Entorno_Urbano": "Rasters (censo arboreo + NDVI). Requiere recorte raster, no vectorial.",
-    "6_Dimension_Educacion": "Fuera de alcance en este repositorio.",
-}
+# Dimensiones sin fuentes vectoriales definidas -> se dejan como placeholder.
+# (Entorno Urbano y Educacion ya tienen fuentes; ver REGLAS_DIMENSION y
+#  FUENTES_EXPLICITAS. Solo queda vacio lo que no tenga datos filtrables.)
+DIMENSIONES_PENDIENTES = {}
 
 # Mapeo de fuentes de datos a su dimension.
 # Cada entrada: patron de nombre de archivo (regex, en minusculas) -> dimension.
+# Se aplica a los archivos SUELTOS de la raiz de RUTA_DATOS.
 # El primer patron que coincida define la dimension del archivo.
 REGLAS_DIMENSION = [
     (r"homicidio",                 "1_Dimension_Seguridad"),
@@ -110,8 +110,22 @@ REGLAS_DIMENSION = [
     (r"mercantil",                 "4_Dimension_Desarrollo_Economico"),
 ]
 
-# Solo se procesan los archivos sueltos de la raiz de RUTA_DATOS (no subcarpetas),
-# que son los que tienen coordenadas confiables. Ampliable mas adelante.
+# Fuentes EXPLICITAS que viven en subcarpetas (ruta relativa a RUTA_DATOS).
+# Se declaran una por una para evitar barrer archivos sin coordenadas.
+# Formato: (ruta_relativa, dimension)
+FUENTES_EXPLICITAS = [
+    # Dimension 4 - Desarrollo Economico (registro mercantil geocodificado)
+    (r"Camara_de_Comercio\camara_comercio_geocodificado_13102026.csv", "4_Dimension_Desarrollo_Economico"),
+    # Dimension 5 - Entorno Urbano (obras de infraestructura, geometria LineString)
+    (r"Observatorio_de_Infraestructura\2025_Consolidado.shp",             "5_Dimension_Entorno_Urbano"),
+    (r"Observatorio_de_Infraestructura\2026_Consolidado_proyect.shp",     "5_Dimension_Entorno_Urbano"),
+    (r"Observatorio_de_Infraestructura\2024\Infraestructura_2024.shp",    "5_Dimension_Entorno_Urbano"),
+    # Dimension 6 - Educacion (sedes educativas, geometria Point)
+    (r"Educacion\info_geografica\shape_info_geografica\Información geográfica sedes.shp", "6_Dimension_Educacion"),
+]
+
+# Solo se procesan los archivos SUELTOS de la raiz via REGLAS_DIMENSION.
+# Las fuentes en subcarpetas se declaran en FUENTES_EXPLICITAS (no barrido ciego).
 PROCESAR_RECURSIVO = False
 
 # Extensiones de datos tabulares/espaciales soportadas como fuente.
@@ -405,9 +419,22 @@ def cargar_poligono(ruta: Path) -> gpd.GeoDataFrame:
     return gdf.dissolve()
 
 
+def _predicado_para(gdf_datos) -> str:
+    """
+    Elige el predicado espacial segun el tipo de geometria dominante:
+      - Puntos            -> 'within'    (el punto debe caer dentro del poligono)
+      - Lineas/Poligonos  -> 'intersects' (basta que toquen el area de estudio;
+                             una via que cruza el borde debe incluirse)
+    """
+    tipos = set(gdf_datos.geom_type.dropna().unique())
+    solo_puntos = tipos.issubset({"Point", "MultiPoint"})
+    return "within" if solo_puntos else "intersects"
+
+
 def filtrar_por_poligono(gdf_datos, gdf_poligono):
-    """Filtra registros dentro del poligono (sjoin 'within')."""
-    res = gpd.sjoin(gdf_datos, gdf_poligono, how="inner", predicate="within")
+    """Filtra registros contra el poligono con el predicado adecuado al tipo."""
+    predicado = _predicado_para(gdf_datos)
+    res = gpd.sjoin(gdf_datos, gdf_poligono, how="inner", predicate=predicado)
     cols_idx = [c for c in res.columns if c.startswith("index_")]
     return res.drop(columns=cols_idx, errors="ignore")
 
@@ -422,6 +449,26 @@ def deduplicar(gdf):
     return gdf, antes - len(gdf)
 
 
+def sanear_atributos(gdf):
+    """
+    Convierte a texto las columnas de tipo 'object' con tipos mixtos u objetos
+    no serializables (p.ej. datetime.time, bytes). Evita cuelgues/crashes del
+    driver GeoJSON al exportar atributos con tipos inconsistentes.
+    Las columnas numericas y de fecha nativas se conservan tal cual.
+    """
+    gdf = gdf.copy()
+    for col in gdf.columns:
+        if col == "geometry":
+            continue
+        serie = gdf[col]
+        if serie.dtype == object:
+            # Normalizar a string; nulos -> cadena vacia
+            gdf[col] = serie.apply(
+                lambda v: "" if v is None or (isinstance(v, float) and pd.isna(v)) else str(v)
+            )
+    return gdf
+
+
 def dimension_de(nombre_archivo: str) -> str:
     """Determina la dimension destino segun el nombre del archivo."""
     nombre = nombre_archivo.lower()
@@ -432,15 +479,37 @@ def dimension_de(nombre_archivo: str) -> str:
 
 
 def listar_fuentes() -> list:
-    """Lista los archivos de datos a procesar segun configuracion."""
+    """
+    Lista las fuentes a procesar como pares (ruta, dimension).
+    Combina:
+      - Archivos sueltos de la raiz que coinciden con REGLAS_DIMENSION.
+      - Fuentes declaradas en FUENTES_EXPLICITAS (subcarpetas).
+    """
+    fuentes = []  # lista de (Path, dimension)
+    vistos = set()
+
+    # 1) Archivos de la raiz por patron de nombre
     if PROCESAR_RECURSIVO:
         candidatos = [p for p in RUTA_DATOS.rglob("*") if p.is_file()]
     else:
         candidatos = [p for p in RUTA_DATOS.iterdir() if p.is_file()]
-    fuentes = []
     for p in sorted(candidatos):
-        if p.suffix.lower() in EXTENSIONES_DATOS and dimension_de(p.name) is not None:
-            fuentes.append(p)
+        dim = dimension_de(p.name)
+        if p.suffix.lower() in EXTENSIONES_DATOS and dim is not None:
+            fuentes.append((p, dim))
+            vistos.add(p.resolve())
+
+    # 2) Fuentes explicitas en subcarpetas
+    for rel, dim in FUENTES_EXPLICITAS:
+        p = (RUTA_DATOS / rel)
+        if not p.exists():
+            print(f"   AVISO: fuente explicita no encontrada: {rel}")
+            continue
+        if p.resolve() in vistos:
+            continue
+        fuentes.append((p, dim))
+        vistos.add(p.resolve())
+
     return fuentes
 
 
@@ -472,58 +541,23 @@ def main():
     for p in poligonos:
         print(f"   - {p.stem}")
 
-    # 2) Listar fuentes de datos
+    # 2) Listar fuentes de datos (pares ruta -> dimension)
     fuentes = listar_fuentes()
     print(f"\n[INFO] Fuentes de datos a procesar: {len(fuentes)}")
-    for f in fuentes:
-        print(f"   - {f.name}  ->  {dimension_de(f.name)}")
+    for f, dim in fuentes:
+        print(f"   - {f.name}  ->  {dim}")
 
-    # 3) Precargar cada fuente como GeoDataFrame (una sola lectura por fuente)
+    # 3) Preparar territorios: cargar poligonos (pequenos) y crear estructura.
+    #    No se precargan las fuentes para no agotar memoria (algunas tienen
+    #    cientos de miles de registros). Se procesan de a una.
     print("\n" + "-" * 78)
-    print("Leyendo y preparando fuentes (geometria + WGS84)...")
-    gdf_fuentes = {}   # ruta -> (gdf, dimension)
-    sin_coordenadas = []
-    errores_lectura = []
-    descartes_coords = {}  # nombre -> registros descartados por validacion de coords
-    for f in fuentes:
-        try:
-            gdf, descartados = leer_fuente_como_gdf(f)
-            gdf_fuentes[f] = (gdf, dimension_de(f.name))
-            if descartados:
-                descartes_coords[f.name] = descartados
-                print(f"   OK   {f.name}  ({len(gdf)} con geometria valida | "
-                      f"{descartados} descartados por coords invalidas/fuera de Cali)")
-            else:
-                print(f"   OK   {f.name}  ({len(gdf)} registros con geometria)")
-        except ValueError as e:
-            if str(e) == "SIN_COORDENADAS":
-                sin_coordenadas.append(f.name)
-                print(f"   SKIP {f.name}  (sin columnas de coordenadas)")
-            else:
-                errores_lectura.append(f"{f.name}: {e}")
-                print(f"   ERR  {f.name}  ({e})")
-        except Exception as e:
-            errores_lectura.append(f"{f.name}: {e}")
-            print(f"   ERR  {f.name}  ({e})")
-
-    # 4) Procesar territorio por territorio
-    print("\n" + "=" * 78)
-    print("PROCESANDO TERRITORIOS")
-    print("=" * 78)
-
-    reporte = []   # filas para el reporte global
-    total_exportados = 0
-
+    print("Preparando territorios (poligonos + estructura de dimensiones)...")
+    territorios = []  # (nombre, carpeta_zona, gdf_poligono)
     for pol in poligonos:
         territorio = pol.stem
-        print(f"\n>>> {territorio}")
-
-        # Crear estructura fija de 6 dimensiones
         carpeta_zona = RUTA_SALIDA / territorio
         for dim in DIMENSIONES:
             (carpeta_zona / dim).mkdir(parents=True, exist_ok=True)
-
-        # Placeholders en dimensiones pendientes
         for dim, motivo in DIMENSIONES_PENDIENTES.items():
             readme = carpeta_zona / dim / "README.txt"
             if not readme.exists():
@@ -531,33 +565,70 @@ def main():
                     f"Dimension: {dim}\nEstado: PENDIENTE / FUERA DE ALCANCE\nMotivo: {motivo}\n",
                     encoding="utf-8",
                 )
-
         try:
             gdf_pol = cargar_poligono(pol)
+            territorios.append((territorio, carpeta_zona, gdf_pol))
         except Exception as e:
-            print(f"    ERROR cargando poligono: {e}")
-            reporte.append((territorio, "-", "ERROR_POLIGONO", 0, 0, str(e)))
+            print(f"   ERROR cargando poligono {territorio}: {e}")
+
+    # 4) Procesar FUENTE por FUENTE (cada una se lee una vez y se libera).
+    print("\n" + "=" * 78)
+    print("PROCESANDO FUENTES (una lectura por fuente, filtrado a 14 territorios)")
+    print("=" * 78)
+
+    reporte = []   # filas para el reporte global
+    total_exportados = 0
+    sin_coordenadas = []
+    errores_lectura = []
+    descartes_coords = {}  # nombre -> registros descartados por validacion
+
+    for ruta, dim in fuentes:
+        print(f"\n>>> FUENTE: {ruta.name}  ({dim})")
+        try:
+            gdf_src, descartados = leer_fuente_como_gdf(ruta)
+        except ValueError as e:
+            if str(e) == "SIN_COORDENADAS":
+                sin_coordenadas.append(ruta.name)
+                print(f"    SKIP (sin columnas de coordenadas)")
+            else:
+                errores_lectura.append(f"{ruta.name}: {e}")
+                print(f"    ERR ({e})")
+            continue
+        except Exception as e:
+            errores_lectura.append(f"{ruta.name}: {e}")
+            print(f"    ERR ({e})")
             continue
 
-        # Filtrar cada fuente contra este territorio
-        for ruta, (gdf_src, dim) in gdf_fuentes.items():
+        geom_tipo = ",".join(sorted(set(gdf_src.geom_type.dropna().unique())))
+        if descartados:
+            descartes_coords[ruta.name] = descartados
+            print(f"    {len(gdf_src)} {geom_tipo} validos | "
+                  f"{descartados} descartados por coords invalidas/fuera de Cali")
+        else:
+            print(f"    {len(gdf_src)} registros {geom_tipo}")
+
+        # Filtrar contra cada territorio
+        for territorio, carpeta_zona, gdf_pol in territorios:
             try:
                 filtrado = filtrar_por_poligono(gdf_src, gdf_pol)
                 if filtrado.empty:
-                    print(f"    {ruta.name}: 0 registros en el territorio")
                     reporte.append((territorio, dim, ruta.name, 0, 0, "vacio"))
                     continue
                 filtrado, dups = deduplicar(filtrado)
+                filtrado = sanear_atributos(filtrado)
                 salida = carpeta_zona / dim / f"{ruta.stem}.geojson"
                 if salida.exists():
                     salida.unlink()
                 filtrado.to_file(salida, driver="GeoJSON")
                 total_exportados += 1
-                print(f"    {ruta.name}: {len(filtrado)} registros (dups: {dups}) -> {dim}/")
+                print(f"    -> {territorio}: {len(filtrado)} (dups: {dups})")
                 reporte.append((territorio, dim, ruta.name, len(filtrado), dups, "ok"))
             except Exception as e:
-                print(f"    ERROR {ruta.name}: {e}")
+                print(f"    ERROR {territorio}: {e}")
                 reporte.append((territorio, dim, ruta.name, 0, 0, f"error: {e}"))
+
+        # Liberar memoria de la fuente antes de la siguiente
+        del gdf_src
 
     # 5) Reportes
     print("\n" + "=" * 78)

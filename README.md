@@ -99,10 +99,13 @@ dimensiones temáticas por cada zona. Combina la detección de coordenadas de
 
 **Características:**
 - Sin `input()`: rutas y mapeo de fuentes parametrizados en el script (reproducible)
-- Acepta CSV, XLSX, XLS y SHP como fuente de datos
+- Acepta CSV, XLSX, XLS y SHP como fuente de datos (raíz + subcarpetas declaradas)
 - Regla de coordenadas: valida → detecta SRC → reproyecta a WGS84 (EPSG:4326)
 - Auto-detección de orientación lat/lon por rango (corrige columnas invertidas)
 - Descarta coordenadas corruptas o fuera del área de Cali/Valle (con reporte)
+- Predicado espacial por geometría: `within` (puntos) / `intersects` (líneas)
+- Procesamiento fuente por fuente (soporta fuentes de 200k+ registros)
+- Saneamiento de atributos (tipos mixtos → texto) para exportar GeoJSON sin fallos
 - Deduplicación por atributos + geometría
 - Crea SIEMPRE las 6 dimensiones por territorio (estructura predecible)
 - Reportes: `_reporte_global.md` y `_sin_coordenadas.txt`
@@ -116,12 +119,15 @@ uv run Proceso_conversion_GD/geospatial/filtro_territorios_itt.py
 filtro_itt_territorios/
 └── <Territorio>/
     ├── 1_Dimension_Seguridad/            homicidios, hurtos, comparendos
-    ├── 2_Dimension_Cohesion_Social/      VIF (+ VBG pendiente)
+    ├── 2_Dimension_Cohesion_Social/      VIF (+ VBG pendiente de geocodificar)
     ├── 3_Dimension_Movilidad/            siniestros
-    ├── 4_Dimension_Desarrollo_Economico/ registro mercantil (pendiente)
-    ├── 5_Dimension_Entorno_Urbano/       rásters (placeholder)
-    └── 6_Dimension_Educacion/            fuera de alcance (placeholder)
+    ├── 4_Dimension_Desarrollo_Economico/ cámara de comercio geocodificada
+    ├── 5_Dimension_Entorno_Urbano/       obras de infraestructura (LineString)
+    └── 6_Dimension_Educacion/            sedes educativas (Point)
 ```
+
+> Si un territorio no contiene registros de una fuente, no se genera ese archivo
+> (p.ej. las sedes educativas solo aparecen en los territorios que las contienen).
 
 > **Nota sobre `filtro_espacial_geojson.py`:** sigue disponible para el flujo
 > manual/interactivo y para recortar únicamente `.shp`. Para el flujo ITT
