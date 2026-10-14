@@ -39,21 +39,96 @@ from pathlib import Path
 from datetime import datetime
 
 
-# Extensiones espaciales aceptadas (filtro y datos).
+# Extensiones espaciales aceptadas.
+# Nota: .json se acepta solo como DATO (puede ser GeoJSON), pero no todos los
+# .json son geograficos; si no se puede leer, se omite con aviso.
 EXTENSIONES_ESPACIALES = (".shp", ".geojson", ".json")
+
+# Carpetas de salida propias que NO deben tomarse como entrada.
+CARPETAS_EXCLUIDAS = {"shape_filtrado", "geojson_filtrado"}
+
+
+def _excluida(ruta: Path) -> bool:
+    """True si la ruta esta dentro de una carpeta de salida propia."""
+    return any(parte in CARPETAS_EXCLUIDAS for parte in ruta.parts)
 
 
 def buscar_espaciales(carpeta: Path, recursivo: bool = True) -> list:
     """
-    Busca archivos espaciales (.shp, .geojson, .json) dentro de una carpeta.
-    Por defecto busca de forma recursiva (incluye subcarpetas).
+    Busca archivos espaciales dentro de una carpeta.
+    - recursivo=True  -> incluye subcarpetas (para DATOS a filtrar)
+    - recursivo=False -> solo el primer nivel (para ZONA DE ESTUDIO)
+    Excluye las carpetas de salida propias (shape_filtrado/, geojson_filtrado/).
     """
     iterador = carpeta.rglob("*") if recursivo else carpeta.iterdir()
     archivos = []
     for item in sorted(iterador):
         if item.is_file() and item.suffix.lower() in EXTENSIONES_ESPACIALES:
-            archivos.append(item)
+            if not _excluida(item):
+                archivos.append(item)
     return archivos
+
+
+def seleccionar_interactivo(lista: list, titulo: str) -> list:
+    """
+    Permite elegir uno, varios (1,3,5), un rango (1-4) o todos (0 o Enter).
+    """
+    print(f"\n--- SELECCION DE {titulo} ---")
+    for i, archivo in enumerate(lista, 1):
+        print(f"  {i}. {archivo.name}   [{archivo.parent}]")
+    print("\nOpciones:")
+    print("  - Enter o 0 para usar TODOS")
+    print("  - Un numero (ej: 1), varios (ej: 1,3) o un rango (ej: 1-3)")
+    seleccion = input("  Seleccion > ").strip().lower()
+
+    if seleccion in ("", "0"):
+        return lista
+
+    indices = set()
+    try:
+        for parte in seleccion.split(","):
+            parte = parte.strip()
+            if "-" in parte:
+                ini, fin = parte.split("-")
+                indices.update(range(int(ini), int(fin) + 1))
+            else:
+                indices.add(int(parte))
+        elegidos = [lista[i - 1] for i in sorted(indices) if 1 <= i <= len(lista)]
+        if not elegidos:
+            print("  ADVERTENCIA: seleccion no valida, se usan TODOS.")
+            return lista
+        return elegidos
+    except (ValueError, IndexError):
+        print("  ADVERTENCIA: formato no valido, se usan TODOS.")
+        return lista
+
+
+def cargar_poligonos(archivos: list):
+    """
+    Carga una lista de archivos de poligono, reproyecta a WGS84 y los une en
+    una sola geometria disuelta. Omite (con aviso) los que no se puedan leer.
+    Retorna el GeoDataFrame disuelto o None si ninguno fue valido.
+    """
+    gdfs = []
+    for ruta in archivos:
+        try:
+            gdf = gpd.read_file(ruta)
+            if gdf.empty:
+                print(f"   AVISO: vacio, se omite: {ruta.name}")
+                continue
+            if gdf.crs is None:
+                gdf = gdf.set_crs(epsg=4326)
+            elif gdf.crs.to_epsg() != 4326:
+                gdf = gdf.to_crs(epsg=4326)
+            gdfs.append(gdf[["geometry"]])
+        except Exception as e:
+            print(f"   AVISO: no se pudo leer (se omite): {ruta.name} ({e})")
+
+    if not gdfs:
+        return None
+    unido = pd.concat(gdfs, ignore_index=True)
+    unido = gpd.GeoDataFrame(unido, geometry="geometry", crs="EPSG:4326")
+    return unido.dissolve()
 
 
 def filtrar_por_poligono(gdf_datos: gpd.GeoDataFrame, gdf_poligono: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -81,7 +156,8 @@ def main():
     print("-" * 70)
     print("[ZONA DE ESTUDIO] Ruta del poligono .shp/.geojson que define el area a recortar")
     print("   Ejemplo: ...\\geo_poligonos_territorio\\poligono_Oriente.shp")
-    print("   (puede ser un archivo directo o una carpeta con varios poligonos)")
+    print("   (un archivo directo, o una carpeta: se listan los poligonos del PRIMER")
+    print("    nivel para que elijas; NO se buscan datos en subcarpetas)")
     entrada_filtro = input("   Ruta de la ZONA DE ESTUDIO > ").strip().strip('"').strip("'")
 
     if not entrada_filtro:
@@ -98,37 +174,33 @@ def main():
     if ruta_filtro.is_file() and ruta_filtro.suffix.lower() in EXTENSIONES_ESPACIALES:
         archivos_filtro = [ruta_filtro]
     elif ruta_filtro.is_dir():
-        archivos_filtro = buscar_espaciales(ruta_filtro)
-        if not archivos_filtro:
-            print(f"\nERROR: No se encontraron archivos .shp/.geojson en: {ruta_filtro.resolve()}")
+        # Solo primer nivel: la zona de estudio son poligonos sueltos, no datos anidados
+        candidatos = buscar_espaciales(ruta_filtro, recursivo=False)
+        if not candidatos:
+            print(f"\nERROR: No se encontraron poligonos .shp/.geojson en el primer nivel de:")
+            print(f"       {ruta_filtro.resolve()}")
+            print("       Sugerencia: indica directamente el archivo del poligono.")
             return
+        # Si hay mas de uno, dejar elegir
+        if len(candidatos) == 1:
+            archivos_filtro = candidatos
+        else:
+            archivos_filtro = seleccionar_interactivo(candidatos, "ZONA DE ESTUDIO (poligonos)")
     else:
         print(f"\nERROR: La ruta no es un archivo .shp/.geojson ni una carpeta valida.")
         return
 
-    print(f"\n   ZONA(S) DE ESTUDIO encontrada(s): {len(archivos_filtro)}")
+    print(f"\n   ZONA(S) DE ESTUDIO seleccionada(s): {len(archivos_filtro)}")
     for f in archivos_filtro:
         print(f"   - {f.name}   [{f.parent}]")
 
-    # Cargar y combinar todos los poligonos filtro
+    # Cargar y unir los poligonos (robusto ante archivos ilegibles)
     print(f"\n   Cargando zona(s) de estudio...")
-    try:
-        gdfs_filtro = []
-        for archivo_f in archivos_filtro:
-            gdf_f = gpd.read_file(archivo_f)
-            if gdf_f.crs is None:
-                gdf_f = gdf_f.set_crs(epsg=4326)
-            elif gdf_f.crs.to_epsg() != 4326:
-                gdf_f = gdf_f.to_crs(epsg=4326)
-            gdfs_filtro.append(gdf_f)
-
-        gdf_poligono = pd.concat(gdfs_filtro, ignore_index=True)
-        gdf_poligono = gpd.GeoDataFrame(gdf_poligono, geometry="geometry", crs="EPSG:4326")
-        gdf_poligono = gdf_poligono.dissolve()
-        print(f"   OK: Zona de estudio cargada ({len(gdfs_filtro)} archivo(s), geometria unificada)")
-    except Exception as e:
-        print(f"\nERROR: Al cargar la zona de estudio: {e}")
+    gdf_poligono = cargar_poligonos(archivos_filtro)
+    if gdf_poligono is None or gdf_poligono.empty:
+        print("\nERROR: No se pudo cargar ninguna geometria valida de la zona de estudio.")
         return
+    print(f"   OK: Zona de estudio cargada (geometria unificada)")
 
     # -------------------------------------------------------------------------
     # 2. Solicitar carpeta/archivo con los DATOS a filtrar
