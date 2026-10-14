@@ -66,15 +66,23 @@ def filtrar_por_poligono(gdf_datos: gpd.GeoDataFrame, gdf_poligono: gpd.GeoDataF
 def main():
     print("=" * 70)
     print("  FILTRO ESPACIAL BASICO POR POLIGONO")
-    print("  (SHP -> SHP filtrado + GeoJSON filtrado)")
+    print("  (SHP/GeoJSON -> SHP filtrado + GeoJSON filtrado)")
     print("=" * 70)
+    print("\nEste script necesita DOS rutas, en este orden:")
+    print("  PASO 1 -> ZONA DE ESTUDIO: el poligono con el que se recorta (el 'molde').")
+    print("  PASO 2 -> DATOS A FILTRAR: la informacion que se recorta (puntos/lineas).")
+    print("Solo se conservan los registros que caen DENTRO de la zona de estudio.")
 
     # -------------------------------------------------------------------------
-    # 1. Solicitar archivo(s) de poligono filtro
+    # 1. Solicitar archivo(s) de poligono filtro (ZONA DE ESTUDIO)
     # -------------------------------------------------------------------------
-    print("\n[FILTRO] Ingresa la ruta de la carpeta o archivo del poligono filtro")
-    print("   (acepta .shp o .geojson; puede ser una carpeta o un archivo directo)")
-    entrada_filtro = input("   > ").strip().strip('"').strip("'")
+    print("\n" + "-" * 70)
+    print("PASO 1 de 2  |  ZONA DE ESTUDIO (poligono que recorta)")
+    print("-" * 70)
+    print("[ZONA DE ESTUDIO] Ruta del poligono .shp/.geojson que define el area a recortar")
+    print("   Ejemplo: ...\\geo_poligonos_territorio\\poligono_Oriente.shp")
+    print("   (puede ser un archivo directo o una carpeta con varios poligonos)")
+    entrada_filtro = input("   Ruta de la ZONA DE ESTUDIO > ").strip().strip('"').strip("'")
 
     if not entrada_filtro:
         print("\nERROR: No ingresaste ninguna ruta.")
@@ -98,12 +106,12 @@ def main():
         print(f"\nERROR: La ruta no es un archivo .shp/.geojson ni una carpeta valida.")
         return
 
-    print(f"\n   Archivos de poligono filtro encontrados:")
+    print(f"\n   ZONA(S) DE ESTUDIO encontrada(s): {len(archivos_filtro)}")
     for f in archivos_filtro:
-        print(f"   - {f.name}")
+        print(f"   - {f.name}   [{f.parent}]")
 
     # Cargar y combinar todos los poligonos filtro
-    print(f"\n   Cargando poligono(s) filtro...")
+    print(f"\n   Cargando zona(s) de estudio...")
     try:
         gdfs_filtro = []
         for archivo_f in archivos_filtro:
@@ -117,17 +125,21 @@ def main():
         gdf_poligono = pd.concat(gdfs_filtro, ignore_index=True)
         gdf_poligono = gpd.GeoDataFrame(gdf_poligono, geometry="geometry", crs="EPSG:4326")
         gdf_poligono = gdf_poligono.dissolve()
-        print(f"   OK: Poligono filtro cargado ({len(gdfs_filtro)} archivo(s), geometria disuelta)")
+        print(f"   OK: Zona de estudio cargada ({len(gdfs_filtro)} archivo(s), geometria unificada)")
     except Exception as e:
-        print(f"\nERROR: Al cargar poligono filtro: {e}")
+        print(f"\nERROR: Al cargar la zona de estudio: {e}")
         return
 
     # -------------------------------------------------------------------------
-    # 2. Solicitar carpeta con los .shp a filtrar
+    # 2. Solicitar carpeta/archivo con los DATOS a filtrar
     # -------------------------------------------------------------------------
-    print("\n[DATOS] Ingresa la ruta de la carpeta (o archivo) con los datos a filtrar")
-    print("   (acepta .shp o .geojson; busca tambien en subcarpetas)")
-    entrada_datos = input("   > ").strip().strip('"').strip("'")
+    print("\n" + "-" * 70)
+    print("PASO 2 de 2  |  DATOS A FILTRAR (informacion que se recorta)")
+    print("-" * 70)
+    print("[DATOS A FILTRAR] Ruta de la informacion .shp/.geojson que quieres recortar")
+    print("   Ejemplo: ...\\data_2025_2026  (carpeta)  o  ...\\homicidios.shp (archivo)")
+    print("   (puede ser una carpeta -se busca tambien en subcarpetas- o un archivo)")
+    entrada_datos = input("   Ruta de los DATOS A FILTRAR > ").strip().strip('"').strip("'")
 
     if not entrada_datos:
         print("\nERROR: No ingresaste ninguna ruta.")
@@ -161,10 +173,13 @@ def main():
     # -------------------------------------------------------------------------
     # 3. Solicitar carpeta de salida
     # -------------------------------------------------------------------------
-    print("\n[SALIDA] Ingresa la ruta de la carpeta donde guardar los archivos filtrados")
+    print("\n" + "-" * 70)
+    print("CARPETA DE SALIDA (donde se guardan los resultados)")
+    print("-" * 70)
+    print("[SALIDA] Ruta donde guardar los resultados")
     print("   (se crearan subcarpetas shape_filtrado/ y geojson_filtrado/)")
-    print("   (presiona Enter para usar la misma carpeta de los datos)")
-    entrada_salida = input("   > ").strip().strip('"').strip("'")
+    print("   (presiona Enter para usar la misma carpeta de los datos a filtrar)")
+    entrada_salida = input("   Ruta de SALIDA > ").strip().strip('"').strip("'")
 
     if not entrada_salida:
         carpeta_salida = carpeta_datos
@@ -177,13 +192,17 @@ def main():
     carpeta_shape_out.mkdir(parents=True, exist_ok=True)
     carpeta_geojson_out.mkdir(parents=True, exist_ok=True)
 
-    print(f"\n[INFO] Carpetas de salida:")
-    print(f"   SHP     -> {carpeta_shape_out.resolve()}")
-    print(f"   GeoJSON -> {carpeta_geojson_out.resolve()}")
-
     # -------------------------------------------------------------------------
-    # 4. Confirmar
+    # 4. Resumen y confirmacion (recapitula que es cada ruta)
     # -------------------------------------------------------------------------
+    print("\n" + "=" * 70)
+    print("  REVISA ANTES DE CONTINUAR")
+    print("=" * 70)
+    print(f"  ZONA DE ESTUDIO (recorta):  {', '.join(f.name for f in archivos_filtro)}")
+    print(f"  DATOS A FILTRAR ({len(archivos_shp)}):      {carpeta_datos.resolve()}")
+    print(f"  SALIDA SHP     ->           {carpeta_shape_out.resolve()}")
+    print(f"  SALIDA GeoJSON ->           {carpeta_geojson_out.resolve()}")
+    print("=" * 70)
     print("\n¿Deseas continuar con el filtrado espacial? (s/n)")
     confirm = input("   > ").strip().lower()
     if confirm not in ("s", "si", "si", "y", "yes"):
