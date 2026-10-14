@@ -28,7 +28,8 @@ Dependencias:
     - shapely
 
 Ejecucion (desde Proceso_conversion_GD/):
-    uv run geospatial/filtro_basico.py
+    uv run Proceso_conversion_GD/geospatial/filtro_basico.py
+
 =============================================================================
 """
 
@@ -38,11 +39,19 @@ from pathlib import Path
 from datetime import datetime
 
 
-def buscar_shapefiles(carpeta: Path) -> list:
-    """Busca archivos .shp dentro de una carpeta (sin recursion)."""
+# Extensiones espaciales aceptadas (filtro y datos).
+EXTENSIONES_ESPACIALES = (".shp", ".geojson", ".json")
+
+
+def buscar_espaciales(carpeta: Path, recursivo: bool = True) -> list:
+    """
+    Busca archivos espaciales (.shp, .geojson, .json) dentro de una carpeta.
+    Por defecto busca de forma recursiva (incluye subcarpetas).
+    """
+    iterador = carpeta.rglob("*") if recursivo else carpeta.iterdir()
     archivos = []
-    for item in sorted(carpeta.iterdir()):
-        if item.is_file() and item.suffix.lower() == ".shp":
+    for item in sorted(iterador):
+        if item.is_file() and item.suffix.lower() in EXTENSIONES_ESPACIALES:
             archivos.append(item)
     return archivos
 
@@ -63,8 +72,8 @@ def main():
     # -------------------------------------------------------------------------
     # 1. Solicitar archivo(s) de poligono filtro
     # -------------------------------------------------------------------------
-    print("\n[FILTRO] Ingresa la ruta de la carpeta o archivo .shp del poligono filtro")
-    print("   (puede ser una carpeta con varios .shp o un archivo .shp directo)")
+    print("\n[FILTRO] Ingresa la ruta de la carpeta o archivo del poligono filtro")
+    print("   (acepta .shp o .geojson; puede ser una carpeta o un archivo directo)")
     entrada_filtro = input("   > ").strip().strip('"').strip("'")
 
     if not entrada_filtro:
@@ -78,15 +87,15 @@ def main():
         return
 
     # Determinar si es archivo o carpeta
-    if ruta_filtro.is_file() and ruta_filtro.suffix.lower() == ".shp":
+    if ruta_filtro.is_file() and ruta_filtro.suffix.lower() in EXTENSIONES_ESPACIALES:
         archivos_filtro = [ruta_filtro]
     elif ruta_filtro.is_dir():
-        archivos_filtro = buscar_shapefiles(ruta_filtro)
+        archivos_filtro = buscar_espaciales(ruta_filtro)
         if not archivos_filtro:
-            print(f"\nERROR: No se encontraron archivos .shp en: {ruta_filtro.resolve()}")
+            print(f"\nERROR: No se encontraron archivos .shp/.geojson en: {ruta_filtro.resolve()}")
             return
     else:
-        print(f"\nERROR: La ruta no es un archivo .shp ni una carpeta valida.")
+        print(f"\nERROR: La ruta no es un archivo .shp/.geojson ni una carpeta valida.")
         return
 
     print(f"\n   Archivos de poligono filtro encontrados:")
@@ -116,27 +125,36 @@ def main():
     # -------------------------------------------------------------------------
     # 2. Solicitar carpeta con los .shp a filtrar
     # -------------------------------------------------------------------------
-    print("\n[DATOS] Ingresa la ruta de la carpeta con los archivos .shp a filtrar")
-    print("   (puede ser ruta absoluta o relativa)")
+    print("\n[DATOS] Ingresa la ruta de la carpeta (o archivo) con los datos a filtrar")
+    print("   (acepta .shp o .geojson; busca tambien en subcarpetas)")
     entrada_datos = input("   > ").strip().strip('"').strip("'")
 
     if not entrada_datos:
         print("\nERROR: No ingresaste ninguna ruta.")
         return
 
-    carpeta_datos = Path(entrada_datos)
+    ruta_datos = Path(entrada_datos)
 
-    if not carpeta_datos.exists() or not carpeta_datos.is_dir():
-        print(f"\nERROR: La carpeta no existe: {carpeta_datos.resolve()}")
+    if not ruta_datos.exists():
+        print(f"\nERROR: La ruta no existe: {ruta_datos.resolve()}")
         return
 
-    archivos_shp = buscar_shapefiles(carpeta_datos)
+    # Permite archivo directo o carpeta
+    if ruta_datos.is_file() and ruta_datos.suffix.lower() in EXTENSIONES_ESPACIALES:
+        archivos_shp = [ruta_datos]
+        carpeta_datos = ruta_datos.parent
+    elif ruta_datos.is_dir():
+        carpeta_datos = ruta_datos
+        archivos_shp = buscar_espaciales(carpeta_datos)
+    else:
+        print(f"\nERROR: La ruta no es un archivo .shp/.geojson ni una carpeta valida.")
+        return
 
     if not archivos_shp:
-        print(f"\nERROR: No se encontraron archivos .shp en: {carpeta_datos.resolve()}")
+        print(f"\nERROR: No se encontraron archivos .shp/.geojson en: {carpeta_datos.resolve()}")
         return
 
-    print(f"\n[INFO] Se encontraron {len(archivos_shp)} archivos .shp para filtrar:")
+    print(f"\n[INFO] Se encontraron {len(archivos_shp)} archivos para filtrar:")
     for archivo in archivos_shp:
         print(f"   - {archivo.name}")
 
